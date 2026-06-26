@@ -49,9 +49,15 @@ shell_exec($cmd . ' 2>&1');
 
 $outputFile = 'uploads/' . $base . '.mp4';
 $burnFailed = false;
+$subPattern = 'uploads/' . $base . '.' . $subsLang . '.*';
+
+if ($subsEnabled && $subsMode === 'soft' && file_exists($outputFile)) {
+    // Subs are embedded — remove the loose subtitle file
+    foreach (glob($subPattern) as $sf) unlink($sf);
+}
 
 if ($subsEnabled && $subsMode === 'hard' && file_exists($outputFile)) {
-    $subFiles = glob('uploads/' . $base . '.' . $subsLang . '.*');
+    $subFiles = glob($subPattern);
     if (!empty($subFiles)) {
         $subFile    = $subFiles[0];
         $burnedFile = 'uploads/' . $base . '_burned.mp4';
@@ -65,6 +71,9 @@ if ($subsEnabled && $subsMode === 'hard' && file_exists($outputFile)) {
         );
         if (file_exists($burnedFile)) {
             $outputFile = $burnedFile;
+            // Clean up intermediate unburned mp4 and loose srt
+            unlink('uploads/' . $base . '.mp4');
+            foreach ($subFiles as $sf) unlink($sf);
         } else {
             $burnFailed = true;
         }

@@ -50,5 +50,5 @@
 - [x] Fix "Trim video" heading in `trimAudioResult.php` (copy-paste bug)
 - [x] Fix "Upload Video" label on audio upload submit button
 - [x] Delete orphaned `clicktext.php`
-- [ ] Clean up loose `.srt` files after successful hard sub burn-in
+- [x] Clean up loose `.srt` files after successful sub downloads (soft and hard)
 - [ ] Empty uploads folder doesn't show audio upload button on its confirmation page
