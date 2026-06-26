@@ -135,8 +135,7 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
       <div class="w3-card w3-padding w3-margin-bottom">
         <h3 class="w3-margin-top">Import</h3>
         <a href="youtube.php"><button class="w3-button w3-teal w3-margin-bottom">Download</button></a>
-        <a href="upload.php"><button class="w3-button w3-blue w3-margin-bottom">Upload video</button></a>
-        <a href="uploadAudio.php"><button class="w3-button w3-green w3-margin-bottom">Upload audio</button></a>
+        <a href="upload.php"><button class="w3-button w3-blue w3-margin-bottom">Upload</button></a>
         <button class="w3-button w3-margin-bottom" disabled style="opacity:0.45;cursor:not-allowed">Generate <span class="w3-small">(coming soon)</span></button>
       </div>
 
