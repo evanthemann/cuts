@@ -30,9 +30,7 @@ if ($p['subsEnabled']) {
     $cmd .= ' --write-subs --write-auto-subs'
          .  ' --sub-langs ' . escapeshellarg($p['subsLang'])
          .  ' --sub-format ' . escapeshellarg('srt/vtt/best');
-    if ($p['subsMode'] === 'soft') {
-        $cmd .= ' --embed-subs';
-    }
+    // Note: no --embed-subs — we run our own ffmpeg step so we can log and verify it
 }
 $cmd .= ' ' . escapeshellarg($p['url']);
 
@@ -50,8 +48,32 @@ function findSubFiles($outputBase) {
 }
 
 if ($p['subsEnabled'] && $p['subsMode'] === 'soft' && file_exists($outputFile)) {
-    // --embed-subs already embedded them; clean up loose files
-    foreach (findSubFiles($p['outputBase']) as $sf) unlink($sf);
+    $subFiles = array_values(findSubFiles($p['outputBase']));
+    echo "\n[cuts] Found " . count($subFiles) . " subtitle file(s) for embedding: " . implode(', ', array_map('basename', $subFiles)) . "\n";
+    if (!empty($subFiles)) {
+        $subFile  = $subFiles[0];
+        $tmpFile  = $p['outputBase'] . '_softtmp.mp4';
+        echo "[cuts] Embedding subtitle track with ffmpeg: " . basename($subFile) . "\n";
+        passthru(
+            $ffmpeg
+            . ' -loglevel error -stats'
+            . ' -i ' . escapeshellarg($outputFile)
+            . ' -i ' . escapeshellarg($subFile)
+            . ' -c copy -c:s mov_text'
+            . ' ' . escapeshellarg($tmpFile)
+        );
+        if (file_exists($tmpFile)) {
+            unlink($outputFile);
+            rename($tmpFile, $outputFile);
+            foreach ($subFiles as $sf) unlink($sf);
+            echo "[cuts] Subtitle track embedded.\n";
+        } else {
+            echo "[cuts] ffmpeg subtitle embedding failed.\n";
+            foreach ($subFiles as $sf) unlink($sf);
+        }
+    } else {
+        echo "[cuts] No subtitle files found — skipping embedding.\n";
+    }
 }
 
 if ($p['subsEnabled'] && $p['subsMode'] === 'hard' && file_exists($outputFile)) {
