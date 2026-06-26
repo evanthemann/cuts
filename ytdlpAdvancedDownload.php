@@ -1,5 +1,7 @@
 <?php
 
+set_time_limit(0);
+
 $youtubeUrl  = $_POST['youtubeUrl'] ?? '';
 $vidFormat   = $_POST['vid_format'] ?? '';
 $audFormat   = $_POST['aud_format'] ?? '';
@@ -20,7 +22,7 @@ if (!preg_match('/^[a-z]{2,10}$/', $subsLang)) {
 }
 
 $ytdlp  = '/usr/local/bin/yt-dlp';
-$ffmpeg = '/usr/local/bin/ffmpeg';
+$ffmpeg = '/usr/bin/ffmpeg';
 $base   = 'ytdlp_' . time();
 
 $formatArg = ($formatMode === 'combined')

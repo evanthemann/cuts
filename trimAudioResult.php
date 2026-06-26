@@ -29,7 +29,7 @@
         die('<div class="w3-panel w3-red">File not found.</div>');
       }
 
-      $ffmpegPath = '/usr/local/bin/ffmpeg';
+      $ffmpegPath = '/usr/bin/ffmpeg';
       $command = $ffmpegPath
         . ' -i ' . escapeshellarg($inputFile)
         . ' -ss ' . $startSeconds
