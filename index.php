@@ -42,7 +42,13 @@ function fmtSize($bytes) {
     return round($bytes / 1024) . ' KB';
 }
 
+function findThumb($path) {
+    $base = substr($path, 0, strrpos($path, '.'));
+    return file_exists($base . '.jpg') ? $base . '.jpg' : null;
+}
+
 $mediaExts = ['mp4','mkv','mov','avi','webm','mp3','m4a','wav','aac','ogg','flac'];
+$videoExts = ['mp4','mkv','mov','avi','webm'];
 $mediaFiles = [];
 $otherFiles = [];
 
@@ -51,8 +57,16 @@ foreach (glob('uploads/*') as $f) {
     $name = basename($f);
     if ($name === '.gitkeep') continue;
     $ext = strtolower(pathinfo($f, PATHINFO_EXTENSION));
+    if ($ext === 'jpg' || $ext === 'jpeg') {
+        // skip thumbnail sidecars — they sit next to their video files
+        $base = substr($f, 0, strrpos($f, '.'));
+        foreach ($videoExts as $ve) {
+            if (file_exists($base . '.' . $ve)) continue 2;
+        }
+    }
     if (in_array($ext, $mediaExts)) {
-        $mediaFiles[] = ['path' => $f, 'name' => $name, 'info' => ffprobeInfo($f)];
+        $isVid = in_array($ext, $videoExts);
+        $mediaFiles[] = ['path' => $f, 'name' => $name, 'info' => ffprobeInfo($f), 'thumb' => $isVid ? findThumb($f) : null];
     } else {
         $otherFiles[] = $name;
     }
@@ -99,7 +113,7 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
         <div style="display:flex; justify-content:space-between; align-items:baseline">
           <h3 class="w3-margin-top">Your files <?= count($mediaFiles) > 0 ? '(' . count($mediaFiles) . ')' : '' ?></h3>
           <?php if (!empty($mediaFiles) || !empty($otherFiles)): ?>
-          <form action="emptyFolder.php" method="post" style="margin:0" onsubmit="return confirm('Empty the uploads folder? This cannot be undone.')">
+          <form action="emptyFolder.php" method="post" style="margin:0" onsubmit="return confirm('Delete ALL files in uploads/? This cannot be undone.')">
             <button class="w3-button w3-small w3-black w3-hover-red" type="submit">Empty folder</button>
           </form>
           <?php endif; ?>
@@ -113,7 +127,7 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
           <table class="w3-table w3-striped w3-hoverable w3-bordered w3-small">
             <thead>
               <tr class="w3-dark-grey">
-                <th>Type</th>
+                <th></th>
                 <th>Name</th>
                 <th>Duration</th>
                 <th>Resolution / Bitrate</th>
@@ -129,10 +143,11 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
                 $enc = urlencode($f['name']);
               ?>
               <tr>
-                <td>
-                  <?php if ($isVideo): ?>
-                    <span class="w3-tag w3-blue w3-small">video</span>
-                  <?php else: ?>
+                <td style="padding:4px;width:88px">
+                  <?php if ($f['thumb']): ?>
+                    <img src="<?= htmlspecialchars($f['thumb']) ?>" alt=""
+                         style="width:80px;height:45px;object-fit:cover;border-radius:3px;display:block">
+                  <?php elseif (!$isVideo): ?>
                     <span class="w3-tag w3-green w3-small">audio</span>
                   <?php endif; ?>
                 </td>

@@ -8,12 +8,12 @@ $jsonFile = __DIR__ . '/uploads/' . $jobId . '.json';
 $logFile  = __DIR__ . '/uploads/' . $jobId . '.log';
 
 $ytdlpCmd = $ytdlp . ' -J --no-download --no-warnings --no-playlist ' . escapeshellarg($youtubeUrl)
-    . ' >> ' . escapeshellarg($logFile)
-    . ' 2>&1 > ' . escapeshellarg($jsonFile);
+    . ' > ' . escapeshellarg($jsonFile)
+    . ' 2> ' . escapeshellarg($logFile);
 
 file_put_contents($logFile, '[' . date('H:i:s') . '] $ ' . $ytdlpCmd . "\n");
 
 shell_exec($ytdlpCmd . ' &');
 
-header('Location: ytdlpAdvancedFormats.php?job=' . urlencode($jobId) . '&url=' . urlencode($youtubeUrl));
+header('Location: youtubeChoose.php?job=' . urlencode($jobId) . '&url=' . urlencode($youtubeUrl));
 exit;

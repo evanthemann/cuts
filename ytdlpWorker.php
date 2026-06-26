@@ -23,12 +23,13 @@ $cmd = $ytdlp
     . ' -f ' . escapeshellarg($formatArg)
     . ' --no-playlist'
     . ' --merge-output-format mp4'
+    . ' --write-thumbnail --convert-thumbnails jpg'
     . ' -o ' . escapeshellarg($p['outputBase'] . '.%(ext)s');
 
 if ($p['subsEnabled']) {
-    $cmd .= ' --write-subs'
+    $cmd .= ' --write-subs --write-auto-subs'
          .  ' --sub-langs ' . escapeshellarg($p['subsLang'])
-         .  ' --sub-format "srt/vtt/best"';
+         .  ' --sub-format ' . escapeshellarg('srt/vtt/best');
     if ($p['subsMode'] === 'soft') {
         $cmd .= ' --embed-subs';
     }
