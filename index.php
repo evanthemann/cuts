@@ -193,10 +193,10 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
           </div>
 
           <div class="w3-quarter w3-margin-bottom">
-            <div class="w3-card w3-padding w3-grey tool-card">
+            <div class="w3-card w3-padding w3-orange tool-card">
               <h4>Combine clips</h4>
               <p class="w3-small">Concatenate multiple clips into one file.</p>
-              <button class="w3-button w3-white w3-small" disabled title="Coming soon">Coming soon</button>
+              <a href="combineClips.php"><button class="w3-button w3-white w3-small">Open</button></a>
             </div>
           </div>
 

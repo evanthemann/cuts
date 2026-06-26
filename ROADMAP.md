@@ -46,7 +46,7 @@
 - Pre-selection in dropdown: `<option selected>` when `basename($f) === $_GET['file']`
 - [x] Make filename selection a dropdown/clickable list instead of manual text entry (trim pages)
 - [x] Implement Extract audio (ffmpeg `-vn`)
-- [ ] Implement Combine clips (ffmpeg concat)
+- [x] Implement Combine clips (ffmpeg concat demuxer + filter fallback)
 - [x] Fix "Trim video" heading in `trimAudioResult.php` (copy-paste bug)
 - [x] Fix "Upload Video" label on audio upload submit button
 - [x] Delete orphaned `clicktext.php`

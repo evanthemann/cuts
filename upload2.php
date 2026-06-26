@@ -104,7 +104,7 @@
       <a href="trim.php"><button class="w3-button w3-purple w3-section">Trim video</button></a>
       <a href="trimAudio.php"><button class="w3-button w3-purple w3-section">Trim audio</button></a>
       <a href="extractAudio.php"><button type="button" class="w3-button w3-green w3-section">Extract audio</button></a>
-      <button type="button" name="button" class="w3-button w3-orange w3-section">Combine clips</button>
+      <a href="combineClips.php"><button type="button" class="w3-button w3-orange w3-section">Combine clips</button></a>
       <button type="button" name="button" class="w3-button w3-yellow w3-section">Other</button>
 
       <?php include 'videoFolder.php'; ?>
