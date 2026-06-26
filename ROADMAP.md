@@ -54,3 +54,17 @@
 - [ ] Empty uploads folder doesn't show audio upload button on its confirmation page
 - [x] "Your files" table — View button per row opens file in a w3-modal (video/audio player inline)
 - [x] Dark mode
+
+### Low-bandwidth subtitle workflow
+
+**Problem:** Burning hard subs onto a 144p video produces ~10px text — completely unreadable.
+
+**Insight:** Video quality can stay 144p (fast/cheap download), but subs need a larger canvas to render at readable size.
+
+**Solution:** When hard-burn subtitles are selected and source video height ≤ 360p, upscale to 480p *before* burning, then deliver the 480p file.
+
+- `ffmpeg -vf "scale=854:480:flags=lanczos,subtitles=file.srt" -c:a copy`
+- Scale and subtitle burn in a single pass — no intermediate file
+- 480p is the sweet spot: readable subs, short encode, moderate file size (upscaling a 144p source to 1080p is wasteful — looks identical, just more pixels)
+- Optionally expose a "target resolution" dropdown (360p / 480p / 720p) when hard-burn + low-res source are both selected
+- Detect source height via ffprobe before building the ffmpeg command; skip upscale if source is already ≥ 480p

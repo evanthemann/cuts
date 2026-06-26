@@ -44,7 +44,20 @@ function fmtSize($bytes) {
 
 function findThumb($path) {
     $base = substr($path, 0, strrpos($path, '.'));
-    return file_exists($base . '.jpg') ? $base . '.jpg' : null;
+    if (file_exists($base . '.jpg')) return $base . '.jpg';
+    // burned files are renamed VideoTitle_burned.mp4; thumbnail kept original name
+    $baseOrig = preg_replace('/_burned$/', '', $base);
+    if ($baseOrig !== $base && file_exists($baseOrig . '.jpg')) return $baseOrig . '.jpg';
+    // ffmpeg fallback: extract frame and cache in uploads/thumbs/
+    $thumbsDir = __DIR__ . '/uploads/thumbs';
+    if (!is_dir($thumbsDir)) mkdir($thumbsDir, 0755, true);
+    $cached = $thumbsDir . '/' . md5(basename($path)) . '.jpg';
+    if (!file_exists($cached)) {
+        shell_exec('ffmpeg -y -i ' . escapeshellarg($path)
+            . ' -ss 00:00:03 -vframes 1 -vf "scale=160:-1"'
+            . ' ' . escapeshellarg($cached) . ' 2>/dev/null');
+    }
+    return file_exists($cached) ? 'uploads/thumbs/' . basename($cached) : null;
 }
 
 $mediaExts = ['mp4','mkv','mov','avi','webm','mp3','m4a','wav','aac','ogg','flac'];
@@ -58,12 +71,14 @@ foreach (glob('uploads/*') as $f) {
     if ($name === '.gitkeep') continue;
     $ext = strtolower(pathinfo($f, PATHINFO_EXTENSION));
     if ($ext === 'jpg' || $ext === 'jpeg') {
-        // skip thumbnail sidecars — they sit next to their video files
+        // skip thumbnail sidecars — check both original name and _burned variant
         $base = substr($f, 0, strrpos($f, '.'));
         foreach ($videoExts as $ve) {
             if (file_exists($base . '.' . $ve)) continue 2;
+            if (file_exists($base . '_burned.' . $ve)) continue 2;
         }
     }
+    if ($ext === 'log' || $ext === 'json') continue; // skip job artifacts
     if (in_array($ext, $mediaExts)) {
         $isVid = in_array($ext, $videoExts);
         $mediaFiles[] = ['path' => $f, 'name' => $name, 'info' => ffprobeInfo($f), 'thumb' => $isVid ? findThumb($f) : null];

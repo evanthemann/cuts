@@ -13,7 +13,7 @@ $audOk = $formatMode === 'combined' || preg_match('/^\d+$/', $audFormat);
 if (!$youtubeUrl || !$vidOk || !$audOk) {
     die('<div class="w3-panel w3-red">Invalid input.</div>');
 }
-if (!preg_match('/^[a-z]{2,10}$/', $subsLang)) {
+if (!preg_match('/^[a-z]{2,20}(-[a-zA-Z0-9]{2,8})*$/', $subsLang)) {
     $subsLang = 'en';
 }
 

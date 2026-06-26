@@ -41,11 +41,26 @@ if ($ready) {
     usort($combinedFormats, fn($a,$b) => ($b['height'] ?? 0) - ($a['height'] ?? 0));
     if (empty($videoFormats) && empty($audioFormats)) $limitedFormats = true;
 
+    // Build subtitle track list: manual first, then auto-generated
+    $subTracks = [];
+    foreach ($data['subtitles'] ?? [] as $lang => $tracks) {
+        $subTracks[$lang] = $lang . ' (manual)';
+    }
+    foreach ($data['automatic_captions'] ?? [] as $lang => $tracks) {
+        if (!isset($subTracks[$lang])) {
+            $subTracks[$lang] = $lang . ' (auto)';
+        }
+    }
+    ksort($subTracks);
+    $subDefault = isset($subTracks['en']) ? 'en' : (isset($subTracks['en-orig']) ? 'en-orig' : array_key_first($subTracks));
+
     unlink($jsonFile);
     if (file_exists($logFile)) unlink($logFile);
 } else {
-    $title = '';
-    $tail  = '';
+    $title      = '';
+    $subTracks  = [];
+    $subDefault = 'en';
+    $tail       = '';
     if (file_exists($logFile)) {
         $lines = array_filter(explode("\n", file_get_contents($logFile)));
         $tail  = htmlspecialchars(implode("\n", array_slice($lines, -8)));
@@ -187,15 +202,26 @@ function shortCodec($c) { return htmlspecialchars(explode('.', $c ?? '?')[0]); }
             <!-- Subtitles -->
             <div class="w3-card w3-padding w3-margin-bottom">
               <b>Subtitles</b>
-              <label style="margin-left:12px"><input type="checkbox" name="subs" id="subs_check"> Include subtitles</label>
-              <div id="subs_options" style="display:none;margin-top:10px">
-                <label class="w3-margin-right"><input type="radio" name="subs_mode" value="soft" checked> <b>Soft</b> — embedded track</label>
-                <label><input type="radio" name="subs_mode" value="hard"> <b>Hard</b> — burned in</label>
-                <div style="margin-top:8px">
-                  Language: <input class="w3-input w3-border" type="text" name="subs_lang" value="en"
-                           style="max-width:100px;display:inline-block;margin-left:8px">
+              <?php if (empty($subTracks)): ?>
+                <span class="w3-small w3-text-grey" style="margin-left:12px">None available for this video</span>
+              <?php else: ?>
+                <label style="margin-left:12px"><input type="checkbox" name="subs" id="subs_check"> Include subtitles</label>
+                <div id="subs_options" style="display:none;margin-top:10px">
+                  <label class="w3-margin-right"><input type="radio" name="subs_mode" value="soft" checked> <b>Soft</b> — embedded track</label>
+                  <label><input type="radio" name="subs_mode" value="hard"> <b>Hard</b> — burned in</label>
+                  <div style="margin-top:8px">
+                    <label>Track:
+                      <select name="subs_lang" class="w3-select w3-border" style="max-width:260px;display:inline-block;margin-left:8px">
+                        <?php foreach ($subTracks as $code => $label): ?>
+                          <option value="<?= htmlspecialchars($code) ?>" <?= $code === $subDefault ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($label) ?>
+                          </option>
+                        <?php endforeach; ?>
+                      </select>
+                    </label>
+                  </div>
                 </div>
-              </div>
+              <?php endif; ?>
             </div>
 
             <button type="submit" class="w3-button w3-teal w3-round">Download with selected settings</button>

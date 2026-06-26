@@ -10,7 +10,7 @@ $failed     = false;
 $resultFile = null;
 
 if (file_exists($logFile)) {
-    $rawLines = explode("\n", rtrim(file_get_contents($logFile)));
+    $rawLines = preg_split('/\r\n|\r|\n/', rtrim(file_get_contents($logFile)));
     foreach ($rawLines as $line) {
         if (str_starts_with($line, 'CUTS_DONE:')) {
             $done       = true;
@@ -22,9 +22,9 @@ if (file_exists($logFile)) {
     }
 }
 
-$ext        = $resultFile ? strtolower(pathinfo($resultFile, PATHINFO_EXTENSION)) : '';
-$isAudio    = in_array($ext, ['mp3', 'm4a', 'wav', 'aac', 'ogg', 'flac']);
-$showLines  = array_slice(array_filter($rawLines, fn($l) => !str_starts_with($l, 'CUTS_')), -10);
+$ext       = $resultFile ? strtolower(pathinfo($resultFile, PATHINFO_EXTENSION)) : '';
+$isAudio   = in_array($ext, ['mp3', 'm4a', 'wav', 'aac', 'ogg', 'flac']);
+$showLines = array_slice(array_filter($rawLines, fn($l) => $l !== '' && !str_starts_with($l, 'CUTS_')), -10);
 ?>
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
