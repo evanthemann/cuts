@@ -10,7 +10,7 @@
 
 ## Backlog
 - [x] Make filename selection a dropdown/clickable list instead of manual text entry (trim pages)
-- [ ] Implement Extract audio (ffmpeg `-vn`)
+- [x] Implement Extract audio (ffmpeg `-vn`)
 - [ ] Implement Combine clips (ffmpeg concat)
 - [x] Fix "Trim video" heading in `trimAudioResult.php` (copy-paste bug)
 - [x] Fix "Upload Video" label on audio upload submit button

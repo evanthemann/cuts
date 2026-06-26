@@ -103,7 +103,7 @@
       <h2 class="w3-monospace">Choose program</h2>
       <a href="trim.php"><button class="w3-button w3-purple w3-section">Trim video</button></a>
       <a href="trimAudio.php"><button class="w3-button w3-purple w3-section">Trim audio</button></a>
-      <button type="button" name="button" class="w3-button w3-green w3-section">Extract audio</button>
+      <a href="extractAudio.php"><button type="button" class="w3-button w3-green w3-section">Extract audio</button></a>
       <button type="button" name="button" class="w3-button w3-orange w3-section">Combine clips</button>
       <button type="button" name="button" class="w3-button w3-yellow w3-section">Other</button>
 
