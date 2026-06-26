@@ -12,8 +12,8 @@
 - [x] Make filename selection a dropdown/clickable list instead of manual text entry (trim pages)
 - [ ] Implement Extract audio (ffmpeg `-vn`)
 - [ ] Implement Combine clips (ffmpeg concat)
-- [ ] Fix "Trim video" heading in `trimAudioResult.php` (copy-paste bug)
-- [ ] Fix "Upload Video" label on audio upload submit button
-- [ ] Delete orphaned `clicktext.php`
+- [x] Fix "Trim video" heading in `trimAudioResult.php` (copy-paste bug)
+- [x] Fix "Upload Video" label on audio upload submit button
+- [x] Delete orphaned `clicktext.php`
 - [ ] Clean up loose `.srt` files after successful hard sub burn-in
 - [ ] Empty uploads folder doesn't show audio upload button on its confirmation page

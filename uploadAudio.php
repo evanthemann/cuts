@@ -15,7 +15,7 @@
         <h2 class="w3-monospace">Select audio to upload:</h2>
         <form action="uploadAudio2.php" method="post" enctype="multipart/form-data">
           <input class="w3-section w3-input w3-round w3-hover-green" type="file" name="fileToUpload" id="fileToUpload">
-          <input class="w3-section w3-input w3-round w3-hover-green" type="submit" value="Upload Video" name="submit">
+          <input class="w3-section w3-input w3-round w3-hover-green" type="submit" value="Upload Audio" name="submit">
         </form>
 
         <?php include 'videoFolder.php'; ?>

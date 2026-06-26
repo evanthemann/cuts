@@ -15,7 +15,7 @@
 
     <div class="w3-container w3-card w3-purple w3-half">
 
-    <h2 class="w3-monospace">Trim video</h2>
+    <h2 class="w3-monospace">Trim audio</h2>
 
     <?php
 
