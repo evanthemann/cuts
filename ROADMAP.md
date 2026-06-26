@@ -10,6 +10,8 @@
 
 ## Backlog
 
+### ~~Homepage redesign~~ (done)
+
 ### Homepage redesign — dashboard layout
 
 **Goal:** at a glance, see everything the app can do AND act on files already in the working folder.

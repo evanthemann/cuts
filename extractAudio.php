@@ -17,12 +17,13 @@
           <select class="w3-section w3-select w3-border" name="filename">
             <option value="">— choose a file —</option>
             <?php
+              $preselect = basename($_GET['file'] ?? '');
               $files = glob('uploads/*.{mp4,mkv,mov,avi,webm}', GLOB_BRACE);
               sort($files);
               foreach ($files as $f):
                 $name = basename($f);
             ?>
-            <option value="<?= htmlspecialchars($name) ?>"><?= htmlspecialchars($name) ?></option>
+            <option value="<?= htmlspecialchars($name) ?>" <?= $name === $preselect ? 'selected' : '' ?>><?= htmlspecialchars($name) ?></option>
             <?php endforeach; ?>
           </select>
 
