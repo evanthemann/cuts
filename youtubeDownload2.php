@@ -14,8 +14,11 @@
         <?php
 
           $youtubeUrl = $_POST['youtubeUrl'];
-          $youtubeDlPath = '/usr/local/bin/youtube-dl';
+          $youtubeDlPath = '/usr/local/bin/yt-dlp';
           $path = 'uploads/';
+
+          shell_exec($youtubeDlPath . ' --update 2>&1');
+
           $getYoutubeFilenameCommand = $youtubeDlPath . ' --get-filename -f 18 -o "%(title)s" ' . $youtubeUrl;
 
           $youtubeFilename = (shell_exec($getYoutubeFilenameCommand));
@@ -30,7 +33,7 @@
 
           $sanitizedFilename = substr_replace($newYoutubeFilename ,"", -3);
 
-          $command = $youtubeDlPath . ' -f 18 -o "uploads/' . $sanitizedFilename . '.%(ext)s" ' . $youtubeUrl;
+          $command = $youtubeDlPath . ' -f "18/best[ext=mp4]" -o "uploads/' . $sanitizedFilename . '.%(ext)s" ' . $youtubeUrl;
 
           shell_exec($command);
 
