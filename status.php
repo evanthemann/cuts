@@ -1,13 +1,5 @@
 <?php
 
-// Kill a process if requested
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['kill'])) {
-    $pid = intval($_POST['kill']);
-    if ($pid > 0) posix_kill($pid, SIGTERM);
-    header('Location: status.php');
-    exit;
-}
-
 // Delete an orphaned job file if requested
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_file'])) {
     $name = basename($_POST['delete_file']);
@@ -24,6 +16,7 @@ function getProcs($name) {
         if (!$line) continue;
         $cols = preg_split('/\s+/', $line, 11);
         if (count($cols) < 11) continue;
+        if ($cols[0] !== 'www-data') continue; // only show cuts-owned processes
         $rows[] = [
             'user'    => $cols[0],
             'pid'     => (int)$cols[1],
@@ -61,38 +54,50 @@ $jobFiles = array_merge(
       <h1>Cuts</h1>
       <p class="w3-text-grey w3-small">Auto-refreshes every 5 seconds.</p>
 
-      <!-- yt-dlp -->
-      <div class="w3-card w3-padding w3-margin-bottom">
-        <h3>yt-dlp processes
-          <span class="w3-tag <?= count($ytdlpProcs) ? 'w3-orange' : 'w3-green' ?> w3-small w3-margin-left"><?= count($ytdlpProcs) ?> running</span>
-        </h3>
-        <?php if (empty($ytdlpProcs)): ?>
-          <p class="w3-text-grey">None.</p>
-        <?php else: ?>
+      <?php
+        function procTable($procs, $label) {
+            if (empty($procs)) {
+                echo '<p class="w3-text-grey">None.</p>';
+                return;
+            }
+            $pids    = implode(' ', array_column($procs, 'pid'));
+            $killCmd = 'sudo kill ' . $pids;
+      ?>
+          <div class="w3-panel w3-pale-yellow w3-border w3-small" style="margin-bottom:12px">
+            Web kill buttons may not work (process ownership). Use terminal:
+            <code id="kill-cmd-<?= htmlspecialchars($label) ?>" style="margin-left:6px;font-size:13px"><?= htmlspecialchars($killCmd) ?></code>
+            <button class="w3-button w3-black w3-small w3-margin-left"
+              onclick="navigator.clipboard.writeText('<?= htmlspecialchars($killCmd, ENT_QUOTES) ?>');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)">Copy</button>
+          </div>
           <div class="w3-responsive">
             <table class="w3-table w3-striped w3-bordered w3-small">
               <thead><tr class="w3-dark-grey"><th>PID</th><th>User</th><th>CPU%</th><th>MEM%</th><th>Elapsed</th><th>Command</th><th></th></tr></thead>
               <tbody>
-                <?php foreach ($ytdlpProcs as $p): ?>
+                <?php foreach ($procs as $p): ?>
                 <tr>
                   <td><?= $p['pid'] ?></td>
                   <td><?= htmlspecialchars($p['user']) ?></td>
                   <td><?= $p['cpu'] ?></td>
                   <td><?= $p['mem'] ?></td>
                   <td><?= htmlspecialchars($p['elapsed']) ?></td>
-                  <td style="max-width:500px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="<?= htmlspecialchars($p['cmd']) ?>"><?= htmlspecialchars($p['cmd']) ?></td>
+                  <td style="max-width:460px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="<?= htmlspecialchars($p['cmd']) ?>"><?= htmlspecialchars($p['cmd']) ?></td>
                   <td>
-                    <form method="post" style="margin:0" onsubmit="return confirm('Kill PID <?= $p['pid'] ?>?')">
-                      <input type="hidden" name="kill" value="<?= $p['pid'] ?>">
-                      <button class="w3-button w3-red w3-small" type="submit">Kill</button>
-                    </form>
+                    <button class="w3-button w3-black w3-small"
+                      onclick="navigator.clipboard.writeText('sudo kill <?= $p['pid'] ?>');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)">Copy</button>
                   </td>
                 </tr>
                 <?php endforeach; ?>
               </tbody>
             </table>
           </div>
-        <?php endif; ?>
+      <?php } ?>
+
+      <!-- yt-dlp -->
+      <div class="w3-card w3-padding w3-margin-bottom">
+        <h3>yt-dlp processes
+          <span class="w3-tag <?= count($ytdlpProcs) ? 'w3-orange' : 'w3-green' ?> w3-small w3-margin-left"><?= count($ytdlpProcs) ?> running</span>
+        </h3>
+        <?php procTable($ytdlpProcs, 'ytdlp'); ?>
       </div>
 
       <!-- ffmpeg -->
@@ -100,33 +105,7 @@ $jobFiles = array_merge(
         <h3>ffmpeg processes
           <span class="w3-tag <?= count($ffmpegProcs) ? 'w3-orange' : 'w3-green' ?> w3-small w3-margin-left"><?= count($ffmpegProcs) ?> running</span>
         </h3>
-        <?php if (empty($ffmpegProcs)): ?>
-          <p class="w3-text-grey">None.</p>
-        <?php else: ?>
-          <div class="w3-responsive">
-            <table class="w3-table w3-striped w3-bordered w3-small">
-              <thead><tr class="w3-dark-grey"><th>PID</th><th>User</th><th>CPU%</th><th>MEM%</th><th>Elapsed</th><th>Command</th><th></th></tr></thead>
-              <tbody>
-                <?php foreach ($ffmpegProcs as $p): ?>
-                <tr>
-                  <td><?= $p['pid'] ?></td>
-                  <td><?= htmlspecialchars($p['user']) ?></td>
-                  <td><?= $p['cpu'] ?></td>
-                  <td><?= $p['mem'] ?></td>
-                  <td><?= htmlspecialchars($p['elapsed']) ?></td>
-                  <td style="max-width:500px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="<?= htmlspecialchars($p['cmd']) ?>"><?= htmlspecialchars($p['cmd']) ?></td>
-                  <td>
-                    <form method="post" style="margin:0" onsubmit="return confirm('Kill PID <?= $p['pid'] ?>?')">
-                      <input type="hidden" name="kill" value="<?= $p['pid'] ?>">
-                      <button class="w3-button w3-red w3-small" type="submit">Kill</button>
-                    </form>
-                  </td>
-                </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
-          </div>
-        <?php endif; ?>
+        <?php procTable($ffmpegProcs, 'ffmpeg'); ?>
       </div>
 
       <!-- Orphaned job files -->
