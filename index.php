@@ -10,6 +10,7 @@
       <h1>Cuts</h1>
       <p>What do you want to do?</p>
       <a href="youtubeDownload.php"><button class="w3-button w3-orange">Import a YouTube video</button></a>
+      <a href="ytdlpAdvanced.php"><button class="w3-button w3-teal">Advanced YouTube download</button></a>
       <a href="upload.php"><button class="w3-button w3-blue">Upload a video file</button></a>
       <a href="uploadAudio.php"><button class="w3-button w3-green">Upload an audio file</button></a>
 

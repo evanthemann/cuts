@@ -4,6 +4,10 @@
 
 ## Backlog
 
+### ~~Advanced yt-dlp downloader~~ (done)
+
+**Pages:** `ytdlpAdvanced.php` → `ytdlpAdvancedFormats.php` → `ytdlpAdvancedDownload.php`
+
 ### Advanced yt-dlp downloader (new flow, 3 pages)
 
 Goal: let the user pick exact quality/filesize before downloading, and optionally embed subtitles.
