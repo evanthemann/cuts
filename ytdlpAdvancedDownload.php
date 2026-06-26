@@ -3,11 +3,16 @@
 $youtubeUrl  = $_POST['youtubeUrl'] ?? '';
 $vidFormat   = $_POST['vid_format'] ?? '';
 $audFormat   = $_POST['aud_format'] ?? '';
+$formatMode  = ($_POST['format_mode'] ?? 'separate') === 'combined' ? 'combined' : 'separate';
 $subsEnabled = isset($_POST['subs']);
 $subsMode    = ($_POST['subs_mode'] ?? 'soft') === 'hard' ? 'hard' : 'soft';
 $subsLang    = $_POST['subs_lang'] ?? 'en';
 
-if (!$youtubeUrl || !preg_match('/^\d+$/', $vidFormat) || !preg_match('/^\d+$/', $audFormat)) {
+// In separate mode both streams are required; in combined mode only vid_format is used
+$vidOk = preg_match('/^\d+$/', $vidFormat);
+$audOk = $formatMode === 'combined' || preg_match('/^\d+$/', $audFormat);
+
+if (!$youtubeUrl || !$vidOk || !$audOk) {
     die('<div class="w3-panel w3-red">Invalid input.</div>');
 }
 if (!preg_match('/^[a-z]{2,10}$/', $subsLang)) {
@@ -18,8 +23,12 @@ $ytdlp  = '/usr/local/bin/yt-dlp';
 $ffmpeg = '/usr/local/bin/ffmpeg';
 $base   = 'ytdlp_' . time();
 
+$formatArg = ($formatMode === 'combined')
+    ? $vidFormat
+    : $vidFormat . '+' . $audFormat;
+
 $cmd = $ytdlp
-    . ' -f ' . escapeshellarg($vidFormat . '+' . $audFormat)
+    . ' -f ' . escapeshellarg($formatArg)
     . ' --merge-output-format mp4'
     . ' -o ' . escapeshellarg('uploads/' . $base . '.%(ext)s');
 
