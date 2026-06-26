@@ -55,6 +55,16 @@
 - [x] "Your files" table — View button per row opens file in a w3-modal (video/audio player inline)
 - [x] Dark mode
 
+### Generate subtitles
+
+Automatically generate a subtitle file from a video's audio using a speech-to-text engine.
+
+- **Whisper** (OpenAI, runs locally) — best quality, `whisper video.mp4 --output_format srt`
+- Output `.srt` alongside the video in uploads, ready to use in the subtitle burn-in flow
+- Could offer language selection and model size (tiny/base/small/medium/large — speed vs. accuracy tradeoff)
+- Runs as a background job through the existing progress.php system
+- Natural next step: after generating, offer "burn in" or "embed as soft track" immediately on the result page
+
 ### Generate (lavfi video creation)
 
 Create videos from scratch using ffmpeg's `lavfi` virtual input device — no source file needed.
