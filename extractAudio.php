@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <title>Cuts – Extract audio</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+      <?php include 'darkHead.php'; ?>
   </head>
   <body>
     <div class="w3-container">

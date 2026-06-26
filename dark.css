@@ -1,0 +1,76 @@
+/* ── Cuts dark mode ─────────────────────────────────────────── */
+
+html.dark body {
+  background-color: #1a1a1a !important;
+  color: #e0e0e0 !important;
+}
+
+/* Uncolored cards — skip colors actually used in cuts */
+html.dark .w3-card:not(.w3-teal):not(.w3-purple):not(.w3-green):not(.w3-orange):not(.w3-deep-orange):not(.w3-blue):not(.w3-red):not(.w3-yellow):not(.w3-amber):not(.w3-black) {
+  background-color: #252525 !important;
+  color: #e0e0e0 !important;
+}
+
+html.dark .w3-card-shadow {
+  box-shadow: 0 2px 8px 0 rgba(0,0,0,0.6) !important;
+}
+
+html.dark .w3-white {
+  background-color: #2d2d2d !important;
+  color: #e0e0e0 !important;
+}
+
+html.dark .w3-light-grey,
+html.dark .w3-pale-blue,
+html.dark .w3-pale-green,
+html.dark .w3-pale-yellow,
+html.dark .w3-pale-red {
+  background-color: #333 !important;
+  color: #e0e0e0 !important;
+}
+
+html.dark .w3-dark-grey {
+  background-color: #383838 !important;
+  color: #e0e0e0 !important;
+}
+
+/* Tables */
+html.dark .w3-striped tbody tr:nth-child(odd)  { background-color: #2a2a2a !important; }
+html.dark .w3-striped tbody tr:nth-child(even) { background-color: #1e1e1e !important; }
+html.dark .w3-hoverable tbody tr:hover         { background-color: #333    !important; color: #fff !important; }
+html.dark .w3-bordered,
+html.dark .w3-bordered td,
+html.dark .w3-bordered th { border-color: #444 !important; }
+
+/* Inputs */
+html.dark input:not([type="submit"]):not([type="radio"]):not([type="checkbox"]):not([type="button"]),
+html.dark select,
+html.dark textarea {
+  background-color: #2d2d2d !important;
+  color: #e0e0e0 !important;
+  border-color: #555 !important;
+}
+html.dark input::placeholder { color: #777 !important; }
+
+/* Panels without explicit color (error/warning panels keep their color) */
+html.dark .w3-panel:not(.w3-red):not(.w3-green):not(.w3-yellow):not(.w3-amber):not(.w3-teal):not(.w3-blue):not(.w3-orange):not(.w3-purple):not(.w3-deep-orange):not(.w3-black) {
+  background-color: #2d2d2d !important;
+  color: #e0e0e0 !important;
+}
+
+/* Muted text */
+html.dark .w3-text-grey { color: #999 !important; }
+
+/* Buttons on dark backgrounds */
+html.dark .w3-button.w3-white:not(:hover) {
+  background-color: #2d2d2d !important;
+  color: #e0e0e0 !important;
+}
+html.dark .w3-button.w3-border { border-color: #555 !important; }
+
+/* Links */
+html.dark a { color: #7ec8e3; }
+html.dark a:hover { color: #b0e0f0; }
+
+/* Table row hover in dark doesn't inherit white text from w3.css */
+html.dark table { color: #e0e0e0 !important; }

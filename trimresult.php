@@ -1,55 +1,34 @@
-<html lang="en" dir="ltr">
+<?php
+$filename = basename($_POST['filename'] ?? '');
+if (!$filename) die('<div class="w3-panel w3-red">No file selected.</div>');
 
-  <head>
+$startSeconds = floatval($_POST['startSeconds']);
+$endSeconds   = floatval($_POST['endSeconds']);
+$inputPath    = __DIR__ . '/uploads/' . $filename;
 
-    <meta charset="utf-8">
-    <title>Clip app</title>
-    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+if (!file_exists($inputPath)) die('<div class="w3-panel w3-red">File not found.</div>');
 
-  </head>
+$outputName = 'output_' . $filename;
+$outputPath = __DIR__ . '/uploads/' . $outputName;
+$outputWeb  = 'uploads/' . $outputName;
 
-  <body>
+$ffmpeg = '/usr/bin/ffmpeg';
+$cmd = $ffmpeg
+    . ' -loglevel error'
+    . ' -i ' . escapeshellarg($inputPath)
+    . ' -ss ' . $startSeconds
+    . ' -to ' . $endSeconds
+    . ' -c:v copy -c:a copy -y '
+    . escapeshellarg($outputPath);
 
-  <div class="w3-container">
-    <h1>Cuts</h1>
+$jobId   = uniqid('job_');
+$logFile = __DIR__ . '/uploads/' . $jobId . '.log';
 
-    <div class="w3-container w3-card w3-purple w3-half">
+$bgCmd = '(' . $cmd . ' >> ' . escapeshellarg($logFile) . ' 2>&1'
+       . '; if [ -f ' . escapeshellarg($outputPath) . ' ]; then echo ' . escapeshellarg('CUTS_DONE:' . $outputWeb) . ' >> ' . escapeshellarg($logFile)
+       . '; else echo CUTS_FAIL >> ' . escapeshellarg($logFile) . '; fi) &';
 
-    <h2 class="w3-monospace">Trim video</h2>
+shell_exec($bgCmd);
 
-    <?php
-
-      $filename = basename($_POST['filename'] ?? '');
-      if (!$filename) die('<div class="w3-panel w3-red">No file selected.</div>');
-      $startSeconds = floatval($_POST['startSeconds']);
-      $endSeconds = floatval($_POST['endSeconds']);
-      $path = 'uploads/';
-      $inputFile = $path . $filename;
-
-      if (!file_exists($inputFile)) {
-        die('<div class="w3-panel w3-red">File not found.</div>');
-      }
-
-      $ffmpegPath = '/usr/bin/ffmpeg';
-      $command = $ffmpegPath
-        . ' -i ' . escapeshellarg($inputFile)
-        . ' -ss ' . $startSeconds
-        . ' -to ' . $endSeconds
-        . ' -c:v copy -c:a copy -y '
-        . escapeshellarg($path . 'output_' . $filename);
-
-      shell_exec($command);
-
-    ?>
-    <br>
-    <video width="320" autoplay controls>
-      <source src="uploads/output_<?php echo $filename; ?>">
-    </video>
-    <?php include 'videoFolder.php'; ?>
-    <?php include 'backToHomeButton.php'; ?>
-    </div>
-  </div>
-
-
-  </body>
-</html>
+header('Location: progress.php?job=' . urlencode($jobId));
+exit;

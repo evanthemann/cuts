@@ -52,3 +52,5 @@
 - [x] Delete orphaned `clicktext.php`
 - [x] Clean up loose `.srt` files after successful sub downloads (soft and hard)
 - [ ] Empty uploads folder doesn't show audio upload button on its confirmation page
+- [x] "Your files" table — View button per row opens file in a w3-modal (video/audio player inline)
+- [x] Dark mode

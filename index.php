@@ -70,16 +70,26 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
       .file-name { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
       .tool-card { height: 100%; }
     </style>
+      <?php include 'darkHead.php'; ?>
   </head>
   <body>
     <div class="w3-container w3-padding-24">
-      <h1>Cuts</h1>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h1 style="margin:0">Cuts</h1>
+        <div style="display:flex;gap:8px">
+          <a href="status.php"><button class="w3-button w3-round w3-border">Status</button></a>
+          <button class="cuts-dark-btn w3-button w3-round w3-border" onclick="toggleDark()">Dark</button>
+        </div>
+      </div>
+
+      <?php if ($_GET['emptied'] ?? false): ?>
+        <div class="w3-panel w3-green">Folder emptied.</div>
+      <?php endif; ?>
 
       <!-- ── IMPORT ─────────────────────────────────────── -->
       <div class="w3-card w3-padding w3-margin-bottom">
         <h3 class="w3-margin-top">Import</h3>
-        <a href="youtubeDownload.php"><button class="w3-button w3-orange w3-margin-bottom">YouTube (quick)</button></a>
-        <a href="ytdlpAdvanced.php"><button class="w3-button w3-teal w3-margin-bottom">YouTube (advanced)</button></a>
+        <a href="youtube.php"><button class="w3-button w3-teal w3-margin-bottom">YouTube</button></a>
         <a href="upload.php"><button class="w3-button w3-blue w3-margin-bottom">Upload video</button></a>
         <a href="uploadAudio.php"><button class="w3-button w3-green w3-margin-bottom">Upload audio</button></a>
       </div>
@@ -141,12 +151,19 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
                 </td>
                 <td><?= fmtSize($info['size'] ?? null) ?></td>
                 <td style="white-space:nowrap">
+                  <button class="w3-button w3-teal w3-small"
+                    onclick="viewFile('<?= htmlspecialchars($f['path'], ENT_QUOTES) ?>','<?= htmlspecialchars($f['name'], ENT_QUOTES) ?>',<?= $isVideo ? 'false' : 'true' ?>)">View</button>
                   <?php if ($isVideo): ?>
                     <a href="trim.php?file=<?= $enc ?>"><button class="w3-button w3-purple w3-small">Trim</button></a>
                     <a href="extractAudio.php?file=<?= $enc ?>"><button class="w3-button w3-green w3-small">Extract audio</button></a>
                   <?php else: ?>
                     <a href="trimAudio.php?file=<?= $enc ?>"><button class="w3-button w3-purple w3-small">Trim</button></a>
                   <?php endif; ?>
+                  <form method="post" action="deleteFile.php" style="display:inline"
+                        onsubmit="return confirm('Delete <?= htmlspecialchars($f['name'], ENT_QUOTES) ?>?')">
+                    <input type="hidden" name="filename" value="<?= htmlspecialchars($f['name'], ENT_QUOTES) ?>">
+                    <button type="submit" class="w3-button w3-red w3-small">Delete</button>
+                  </form>
                 </td>
               </tr>
               <?php endforeach; ?>
@@ -204,5 +221,46 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
       </div>
 
     </div>
+    <!-- ── VIEW MODAL ─────────────────────────────────────── -->
+    <div id="view-modal" class="w3-modal" onclick="closeModal()" style="display:none">
+      <div class="w3-modal-content w3-animate-zoom" onclick="event.stopPropagation()" style="max-width:860px;margin:40px auto">
+        <div class="w3-bar w3-dark-grey">
+          <span id="modal-title" class="w3-bar-item w3-padding" style="font-family:monospace;font-size:13px"></span>
+          <button class="w3-bar-item w3-button w3-right w3-large" onclick="closeModal()" style="line-height:1">&times;</button>
+        </div>
+        <div style="background:#000;text-align:center;padding:8px">
+          <video id="modal-video" controls style="max-width:100%;max-height:72vh;display:none"></video>
+          <audio id="modal-audio" controls style="width:90%;margin:16px auto;display:none"></audio>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function viewFile(path, name, isAudio) {
+        document.getElementById('modal-title').textContent = name;
+        var vid = document.getElementById('modal-video');
+        var aud = document.getElementById('modal-audio');
+        if (isAudio) {
+          vid.style.display = 'none'; vid.src = '';
+          aud.style.display = 'block'; aud.src = path;
+          aud.play();
+        } else {
+          aud.style.display = 'none'; aud.src = '';
+          vid.style.display = 'block'; vid.src = path;
+          vid.play();
+        }
+        document.getElementById('view-modal').style.display = 'block';
+      }
+      function closeModal() {
+        document.getElementById('view-modal').style.display = 'none';
+        var vid = document.getElementById('modal-video');
+        var aud = document.getElementById('modal-audio');
+        vid.pause(); vid.src = '';
+        aud.pause(); aud.src = '';
+      }
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeModal();
+      });
+    </script>
   </body>
 </html>

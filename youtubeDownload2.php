@@ -1,51 +1,32 @@
-<!DOCTYPE html>
-<html lang="en" dir="ltr">
-  <head>
-    <meta charset="utf-8">
-    <title>Clip app</title>
-    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-  </head>
-  <body>
+<?php
+$youtubeUrl = $_POST['youtubeUrl'] ?? '';
+if (!$youtubeUrl) { header('Location: youtube.php'); exit; }
 
-        <div class="w3-container w3-card w3-purple w3-half">
+$ytdlp = '/usr/local/bin/yt-dlp';
 
-        <h2 class="w3-monospace">YouTube download</h2>
+// Fetch title for a meaningful filename (fast, synchronous)
+$rawTitle          = trim((string) shell_exec($ytdlp . ' --get-filename --no-playlist -o "%(title)s" ' . escapeshellarg($youtubeUrl) . ' 2>/dev/null'));
+$sanitizedFilename = preg_replace('/_+/', '_', preg_replace('/[^a-zA-Z0-9_\-]/', '_', $rawTitle));
+$sanitizedFilename = trim($sanitizedFilename, '_');
+if (empty($sanitizedFilename)) $sanitizedFilename = 'ytdlp_' . time();
 
-        <?php
+$outputWeb  = 'uploads/' . $sanitizedFilename . '.mp4';
+$outputPath = __DIR__ . '/' . $outputWeb;
 
-          $youtubeUrl = $_POST['youtubeUrl'];
-          $youtubeDlPath = '/usr/local/bin/yt-dlp';
-          $path = 'uploads/';
+$jobId   = uniqid('job_');
+$logFile = __DIR__ . '/uploads/' . $jobId . '.log';
 
-          $getYoutubeFilenameCommand = $youtubeDlPath . ' --get-filename -f 18 -o "%(title)s" ' . escapeshellarg($youtubeUrl);
+$cmd = $ytdlp
+    . ' -f "18/best[ext=mp4]"'
+    . ' --no-playlist'
+    . ' -o ' . escapeshellarg('uploads/' . $sanitizedFilename . '.%(ext)s')
+    . ' ' . escapeshellarg($youtubeUrl);
 
-          $youtubeFilename = (shell_exec($getYoutubeFilenameCommand));
-          $newYoutubeFilename = str_replace(' ', '_', $youtubeFilename);
-          $newYoutubeFilename = str_replace(')', '_', $newYoutubeFilename);
-          $newYoutubeFilename = str_replace('(', '_', $newYoutubeFilename);
-          $newYoutubeFilename = str_replace('.', '_', $newYoutubeFilename);
-          $newYoutubeFilename = str_replace('"', '_', $newYoutubeFilename);
+$bgCmd = '(' . $cmd . ' >> ' . escapeshellarg($logFile) . ' 2>&1'
+       . '; if [ -f ' . escapeshellarg($outputPath) . ' ]; then echo ' . escapeshellarg('CUTS_DONE:' . $outputWeb) . ' >> ' . escapeshellarg($logFile)
+       . '; else echo CUTS_FAIL >> ' . escapeshellarg($logFile) . '; fi) &';
 
+shell_exec($bgCmd);
 
-          // Remove last 3 characters because some weird character at the end breaks it by adding a question mark at the end.
-
-          $sanitizedFilename = substr_replace($newYoutubeFilename ,"", -3);
-
-          $command = $youtubeDlPath . ' -f "18/best[ext=mp4]" -o "uploads/' . $sanitizedFilename . '.%(ext)s" ' . escapeshellarg($youtubeUrl);
-
-          shell_exec($command);
-
-
-        ?>
-        <br>
-        <video width="320" autoplay controls>
-          <source src="uploads/<?php echo $sanitizedFilename; ?>.mp4">
-        </video>
-        <?php include 'videoFolder.php'; ?>
-        <?php include 'backToHomeButton.php'; ?>
-      </div>
-
-
-
-  </body>
-</html>
+header('Location: progress.php?job=' . urlencode($jobId));
+exit;
