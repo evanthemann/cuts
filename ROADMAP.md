@@ -6,7 +6,7 @@
 
 - [x] Run `yt-dlp --update` before every YouTube download
 - [x] Switch from `youtube-dl` to `yt-dlp`
-- [ ] Fix command injection in trim and YouTube download handlers (sanitize/validate all shell inputs)
+- [x] Fix command injection in trim and YouTube download handlers (sanitize/validate all shell inputs)
 - [ ] Make filename selection a dropdown/clickable list instead of a manual text field
 - [ ] Implement Extract audio (ffmpeg `-vn`)
 - [ ] Implement Combine clips (ffmpeg concat)

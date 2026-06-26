@@ -19,12 +19,23 @@
 
     <?php
 
-      $startSeconds = $_POST['startSeconds'];
-      $endSeconds = $_POST['endSeconds'];
-      $filename = $_POST['filename'];
+      $filename = basename($_POST['filename']);
+      $startSeconds = floatval($_POST['startSeconds']);
+      $endSeconds = floatval($_POST['endSeconds']);
       $path = 'uploads/';
+      $inputFile = $path . $filename;
+
+      if (!file_exists($inputFile)) {
+        die('<div class="w3-panel w3-red">File not found.</div>');
+      }
+
       $ffmpegPath = '/usr/local/bin/ffmpeg';
-      $command = $ffmpegPath . ' -i ' . $path . $filename . ' -ss ' . $startSeconds . ' -to ' . $endSeconds . ' -c:v copy -c:a copy -y ' . $path . 'output_' . $filename;
+      $command = $ffmpegPath
+        . ' -i ' . escapeshellarg($inputFile)
+        . ' -ss ' . $startSeconds
+        . ' -to ' . $endSeconds
+        . ' -c:v copy -c:a copy -y '
+        . escapeshellarg($path . 'output_' . $filename);
 
       shell_exec($command);
 

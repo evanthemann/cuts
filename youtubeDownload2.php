@@ -19,7 +19,7 @@
 
           shell_exec($youtubeDlPath . ' --update 2>&1');
 
-          $getYoutubeFilenameCommand = $youtubeDlPath . ' --get-filename -f 18 -o "%(title)s" ' . $youtubeUrl;
+          $getYoutubeFilenameCommand = $youtubeDlPath . ' --get-filename -f 18 -o "%(title)s" ' . escapeshellarg($youtubeUrl);
 
           $youtubeFilename = (shell_exec($getYoutubeFilenameCommand));
           $newYoutubeFilename = str_replace(' ', '_', $youtubeFilename);
@@ -33,7 +33,7 @@
 
           $sanitizedFilename = substr_replace($newYoutubeFilename ,"", -3);
 
-          $command = $youtubeDlPath . ' -f "18/best[ext=mp4]" -o "uploads/' . $sanitizedFilename . '.%(ext)s" ' . $youtubeUrl;
+          $command = $youtubeDlPath . ' -f "18/best[ext=mp4]" -o "uploads/' . $sanitizedFilename . '.%(ext)s" ' . escapeshellarg($youtubeUrl);
 
           shell_exec($command);
 
