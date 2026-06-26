@@ -65,6 +65,10 @@ if ($p['subsEnabled'] && $p['subsMode'] === 'soft' && file_exists($outputFile)) 
         if (file_exists($tmpFile)) {
             unlink($outputFile);
             rename($tmpFile, $outputFile);
+            // Create .vtt sidecar for HTML5 <track> — browsers don't reliably read embedded mov_text
+            $vttSidecar = $p['outputBase'] . '.vtt';
+            shell_exec($ffmpeg . ' -y -loglevel error -i ' . escapeshellarg($subFile) . ' ' . escapeshellarg($vttSidecar) . ' 2>/dev/null');
+            if (file_exists($vttSidecar)) echo "[cuts] Created VTT sidecar for browser playback.\n";
             foreach ($subFiles as $sf) unlink($sf);
             echo "[cuts] Subtitle track embedded.\n";
         } else {

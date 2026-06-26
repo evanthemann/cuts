@@ -11,6 +11,7 @@ if (file_exists($path) && is_file($path)) {
     $baseOrig  = preg_replace('/_burned$/', '', $base);
     foreach (array_unique([$base, $baseOrig]) as $b) {
         if (file_exists($b . '.jpg')) unlink($b . '.jpg');
+        if (file_exists($b . '.vtt')) unlink($b . '.vtt');
     }
 
     // Delete cached ffmpeg thumb if present

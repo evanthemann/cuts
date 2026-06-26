@@ -42,6 +42,11 @@ function fmtSize($bytes) {
     return round($bytes / 1024) . ' KB';
 }
 
+function findSubVtt($path) {
+    $base = substr($path, 0, strrpos($path, '.'));
+    return file_exists($base . '.vtt') ? $base . '.vtt' : null;
+}
+
 function findThumb($path) {
     $base = substr($path, 0, strrpos($path, '.'));
     if (file_exists($base . '.jpg')) return $base . '.jpg';
@@ -79,9 +84,17 @@ foreach (glob('uploads/*') as $f) {
         }
     }
     if ($ext === 'log' || $ext === 'json') continue; // skip job artifacts
+    if ($ext === 'vtt') {                            // skip subtitle sidecars
+        $base = substr($f, 0, strrpos($f, '.'));
+        foreach ($videoExts as $ve) {
+            if (file_exists($base . '.' . $ve)) continue 2;
+        }
+    }
     if (in_array($ext, $mediaExts)) {
         $isVid = in_array($ext, $videoExts);
-        $mediaFiles[] = ['path' => $f, 'name' => $name, 'info' => ffprobeInfo($f), 'thumb' => $isVid ? findThumb($f) : null];
+        $mediaFiles[] = ['path' => $f, 'name' => $name, 'info' => ffprobeInfo($f),
+                         'thumb' => $isVid ? findThumb($f) : null,
+                         'vtt'   => $isVid ? findSubVtt($f) : null];
     } else {
         $otherFiles[] = $name;
     }
@@ -182,7 +195,7 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
                 <td><?= fmtSize($info['size'] ?? null) ?></td>
                 <td style="white-space:nowrap">
                   <button class="w3-button w3-teal w3-small"
-                    onclick="viewFile('<?= htmlspecialchars($f['path'], ENT_QUOTES) ?>','<?= htmlspecialchars($f['name'], ENT_QUOTES) ?>',<?= $isVideo ? 'false' : 'true' ?>)">View</button>
+                    onclick="viewFile('<?= htmlspecialchars($f['path'], ENT_QUOTES) ?>','<?= htmlspecialchars($f['name'], ENT_QUOTES) ?>',<?= $isVideo ? 'false' : 'true' ?>,'<?= htmlspecialchars($f['vtt'] ?? '', ENT_QUOTES) ?>')">View</button>
                   <?php if ($isVideo): ?>
                     <a href="trim.php?file=<?= $enc ?>"><button class="w3-button w3-purple w3-small">Trim</button></a>
                     <a href="extractAudio.php?file=<?= $enc ?>"><button class="w3-button w3-green w3-small">Extract audio</button></a>
@@ -266,7 +279,7 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
     </div>
 
     <script>
-      function viewFile(path, name, isAudio) {
+      function viewFile(path, name, isAudio, vttSrc) {
         document.getElementById('modal-title').textContent = name;
         var vid = document.getElementById('modal-video');
         var aud = document.getElementById('modal-audio');
@@ -276,7 +289,18 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
           aud.play();
         } else {
           aud.style.display = 'none'; aud.src = '';
+          // Clear any previous track elements
+          Array.from(vid.querySelectorAll('track')).forEach(function(t) { t.remove(); });
           vid.style.display = 'block'; vid.src = path;
+          if (vttSrc) {
+            var track = document.createElement('track');
+            track.kind = 'subtitles';
+            track.src = vttSrc;
+            track.srclang = 'en';
+            track.label = 'Subtitles';
+            track.default = true;
+            vid.appendChild(track);
+          }
           vid.play();
         }
         document.getElementById('view-modal').style.display = 'block';
@@ -286,6 +310,7 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
         var vid = document.getElementById('modal-video');
         var aud = document.getElementById('modal-audio');
         vid.pause(); vid.src = '';
+        Array.from(vid.querySelectorAll('track')).forEach(function(t) { t.remove(); });
         aud.pause(); aud.src = '';
       }
       document.addEventListener('keydown', function(e) {
