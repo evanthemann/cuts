@@ -17,8 +17,6 @@
           $youtubeDlPath = '/usr/local/bin/yt-dlp';
           $path = 'uploads/';
 
-          shell_exec($youtubeDlPath . ' --update 2>&1');
-
           $getYoutubeFilenameCommand = $youtubeDlPath . ' --get-filename -f 18 -o "%(title)s" ' . escapeshellarg($youtubeUrl);
 
           $youtubeFilename = (shell_exec($getYoutubeFilenameCommand));

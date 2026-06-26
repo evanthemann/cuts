@@ -45,8 +45,8 @@ Goal: let the user pick exact quality/filesize before downloading, and optionall
 - Hard subs require knowing the subtitle filename yt-dlp writes; use `--write-subs` output path pattern to predict it
 - Validate all POST values before shell use: `escapeshellarg()` on URL, whitelist format IDs to `preg_match('/^\d+$/')`, whitelist lang to `preg_match('/^[a-z]{2,5}$/')`
 
-- [x] Run `yt-dlp --update` before every YouTube download
 - [x] Switch from `youtube-dl` to `yt-dlp`
+- [x] Auto-update removed — nginx runs as `message+`, not `evan` (who owns the binary). Update manually with `yt-dlp --update`.
 - [x] Fix command injection in trim and YouTube download handlers (sanitize/validate all shell inputs)
 - [ ] Make filename selection a dropdown/clickable list instead of a manual text field
 - [ ] Implement Extract audio (ffmpeg `-vn`)
