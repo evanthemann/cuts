@@ -19,7 +19,8 @@
 
     <?php
 
-      $filename = basename($_POST['filename']);
+      $filename = basename($_POST['filename'] ?? '');
+      if (!$filename) die('<div class="w3-panel w3-red">No file selected.</div>');
       $startSeconds = floatval($_POST['startSeconds']);
       $endSeconds = floatval($_POST['endSeconds']);
       $path = 'uploads/';

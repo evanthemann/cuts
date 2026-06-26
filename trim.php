@@ -18,10 +18,20 @@
     <h2 class="w3-sans-serif">Trim video</h2>
 
     <form class="w3-form" action="trimresult.php" method="post">
-      <h6>Copy and paste your file name into the field, then choose start and end point in seconds.</h6>
-      <h4>Which video?</h4><input class="w3-section w3-input" type="text" name="filename">
-      <h4>Start where? (seconds)?</h4><input class="w3-section w3-input" type="text" name="startSeconds">
-      <h4>End where? (seconds)?</h4><input class="w3-section w3-input" type="text" name="endSeconds">
+      <h4>Which video?</h4>
+      <select class="w3-section w3-select w3-border" name="filename">
+        <option value="">— choose a file —</option>
+        <?php
+          $files = glob('uploads/*.{mp4,mkv,mov,avi,webm}', GLOB_BRACE);
+          sort($files);
+          foreach ($files as $f):
+            $name = basename($f);
+        ?>
+        <option value="<?= htmlspecialchars($name) ?>"><?= htmlspecialchars($name) ?></option>
+        <?php endforeach; ?>
+      </select>
+      <h4>Start (seconds)</h4><input class="w3-section w3-input" type="number" step="0.1" min="0" name="startSeconds" placeholder="0">
+      <h4>End (seconds)</h4><input class="w3-section w3-input" type="number" step="0.1" min="0" name="endSeconds" placeholder="0">
       <input class="w3-section w3-input w3-green" type="submit" value="Go" name="submit">
     </form>
 
