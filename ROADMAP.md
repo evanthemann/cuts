@@ -55,6 +55,17 @@
 - [x] "Your files" table — View button per row opens file in a w3-modal (video/audio player inline)
 - [x] Dark mode
 
+### User accounts
+
+Each person gets their own login with isolated uploads and job history.
+
+- Login/register page (session-based auth, bcrypt passwords)
+- Each user's files stored under `uploads/{user_id}/` — no cross-user visibility
+- All tool pages, download workers, and progress page scoped to the logged-in user
+- Admin view to see all users and their storage usage
+- Logout button in the header
+- Consider: single shared ffmpeg/yt-dlp queue vs. per-user concurrent jobs
+
 ### Low-bandwidth subtitle workflow
 
 **Problem:** Burning hard subs onto a 144p video produces ~10px text — completely unreadable.
