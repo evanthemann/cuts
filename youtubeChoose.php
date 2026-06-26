@@ -79,7 +79,7 @@ function shortCodec($c) { return htmlspecialchars(explode('.', $c ?? '?')[0]); }
 <html lang="en" dir="ltr">
   <head>
     <meta charset="utf-8">
-    <title>Cuts – YouTube</title>
+    <title>Cuts – Download</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
       table input[type=radio] { cursor:pointer; }
