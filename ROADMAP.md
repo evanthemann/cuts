@@ -55,6 +55,23 @@
 - [x] "Your files" table — View button per row opens file in a w3-modal (video/audio player inline)
 - [x] Dark mode
 
+### Generate (lavfi video creation)
+
+Create videos from scratch using ffmpeg's `lavfi` virtual input device — no source file needed.
+
+**Ideas:**
+- **Waveform visualizer** — take an audio file, render animated waveform/spectrum bars as a video (`showwaves`, `showspectrum` filters)
+- **Solid color / gradient backgrounds** — `color=c=black:size=1920x1080:rate=30` as a base layer
+- **Text / title cards** — `drawtext` filter with custom font, size, color, position, fade in/out
+- **Countdown timer** — animated countdown rendered purely in ffmpeg
+- **Slideshow from images** — `concat` demuxer + `zoompan` for Ken Burns effect
+- **Audio visualizer export** — combine audio + waveform render into a shareable video
+
+**Implementation approach:**
+- "Generate" page (already stubbed as coming soon on homepage) with preset options
+- Each preset is a PHP function that builds the ffmpeg `lavfi` command
+- Output goes through the same `progress.php` job system as other tools
+
 ### User accounts
 
 Each person gets their own login with isolated uploads and job history.
