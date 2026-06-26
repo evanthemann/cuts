@@ -127,6 +127,9 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
       <?php if ($_GET['emptied'] ?? false): ?>
         <div class="w3-panel w3-green">Folder emptied.</div>
       <?php endif; ?>
+      <?php if ($_GET['uploaded'] ?? false): ?>
+        <div class="w3-panel w3-green"><?= htmlspecialchars($_GET['uploaded']) ?> uploaded.</div>
+      <?php endif; ?>
 
       <!-- ── IMPORT ─────────────────────────────────────── -->
       <div class="w3-card w3-padding w3-margin-bottom">
