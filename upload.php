@@ -45,6 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <h1>Cuts</h1>
       <div class="w3-card w3-padding w3-blue" style="max-width:560px">
         <h2 style="margin-top:0">Upload</h2>
+        <p class="w3-small" style="margin-top:0;opacity:.8">Max file size: <?= ini_get('upload_max_filesize') ?></p>
         <?php if ($error): ?>
           <div class="w3-panel w3-red w3-round"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
