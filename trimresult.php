@@ -25,7 +25,10 @@ $jobId         = uniqid('job_');
 $logFile       = __DIR__ . '/uploads/' . $jobId . '.log';
 $pidFile       = __DIR__ . '/uploads/' . $jobId . '.pid';
 $totalDuration = max(0, $endSeconds - $startSeconds);
-file_put_contents($logFile, 'CUTS_TOTAL_DURATION:' . $totalDuration . "\n");
+file_put_contents($logFile, 'CUTS_TOTAL_DURATION:' . $totalDuration . "\n"
+    . 'CUTS_OP:trim' . "\n"
+    . 'CUTS_INPUTS:' . $filename . "\n"
+    . 'CUTS_OUTPUT:' . $outputName . "\n");
 
 $bgCmd = '(' . $cmd . ' >> ' . escapeshellarg($logFile) . ' 2>&1 & _FFPID=$!; echo $_FFPID > ' . escapeshellarg($pidFile)
        . '; wait $_FFPID; rm -f ' . escapeshellarg($pidFile)

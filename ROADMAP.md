@@ -55,6 +55,42 @@
 - [x] "Your files" table — View button per row opens file in a w3-modal (video/audio player inline)
 - [x] Dark mode
 
+### Branding — Cuts icon
+
+A custom favicon/app icon: scissors + film strip as the base shape, with a small download arrow at the top-right suggesting internet connectivity ("smart" / "connected"). Should read well at 32×32 (favicon) and 192×192 (PWA icon).
+
+Deliverables: `favicon.ico`, `icon-192.png`, `icon-512.png`. Add `<link rel="icon">` to `darkHead.php` so it applies everywhere. Optionally add a PWA manifest (`site.webmanifest`) so it installs nicely on mobile home screens.
+
+### Rename files
+
+Inline rename for files in the homepage table. Click a filename (or an edit icon), it becomes an editable text input, user types the new name and confirms. PHP backend renames the file plus any sidecar files (`.jpg`, `.vtt`, thumb) that share the same base name.
+
+### Job history
+
+Show the last N completed jobs on `status.php` as a readable history log.
+
+**Approach:** each result PHP file appends a JSON line to `uploads/job_history.json` when the job reaches a terminal state (done/failed/cancelled). One record per job:
+
+```json
+{"time": 1719445200, "op": "combine", "inputs": ["a.mp4", "b.mp4"], "output": "combined_xyz.mp4", "status": "done"}
+```
+
+`status.php` reads the last 10 lines of that file and renders a table: timestamp, operation, input(s), output (linked if file still exists), status badge. Raw log files (ffmpeg stats noise) are not kept — the structured record has everything worth knowing.
+
+Operations to instrument: trim, trim audio, extract audio, combine, yt-dlp download.
+
+### Homepage layout — tools first, files beneath
+
+Move the Tools section above the Your Files table so the app's capabilities are immediately visible without scrolling. Import (Download, Upload) placement is TBD — it may stay as its own section or get folded in differently.
+
+**Needs a design deep-dive before building.** Open questions:
+- Where does Import live? Its own section above tools? Collapsed? Part of the tools grid?
+- Should Generate get a placeholder card or stay hidden until built?
+- Does the file table need a header/summary row (total size, file count) when it moves lower?
+- Mobile: does tools-first still feel right when the file list is what you use most after importing?
+
+Before implementing, sketch out 2-3 layout options and pick one.
+
 ### Homepage file list — actions dropdown + smart multi-select combine
 
 **Per-row actions:**
@@ -155,13 +191,41 @@ Each person gets their own login with isolated uploads and job history.
 - Logout button in the header
 - Consider: single shared ffmpeg/yt-dlp queue vs. per-user concurrent jobs
 
+### Visual trim scrubber
+
+Add a timeline scrubber to the trim page to help users find exact timestamps without guessing.
+
+**UI:**
+- A horizontal scrubber (range input) spanning the full duration of the selected file
+- As the user drags, a `<video>` element scrubs to that position showing the current frame
+- Below the scrubber: a read-only `HH:MM:SS.mmm` timestamp display
+- A readonly text input showing the current `HH:MM:SS.mmm` timestamp — user can manually select and copy from it on any device
+- A **Copy** button next to it that attempts `navigator.clipboard.writeText()` as a convenience shortcut where supported
+
+**Implementation notes:**
+- Video element can be hidden or small (thumbnail size) — purpose is frame preview, not playback
+- `input[type=range]` with `min=0 max=duration step=0.033` (one frame at 30fps); set `video.currentTime = scrubber.value` on `input` event
+- Duration from `video.loadedmetadata` event: `duration = video.duration`
+- Format timestamp: `Math.floor(t/3600)` hours, `Math.floor((t%3600)/60)` minutes, `(t%60).toFixed(3)` seconds
+- No server-side changes needed — pure JS on the existing trim form
+- Works for both video trim and audio trim (audio scrubber shows waveform or just time; skip the frame preview for audio-only files)
+
 ### Unified trim page
 
 Merge `trim.php` and `trimAudio.php` into a single page with two tabs — **Video** and **Audio** — using w3.css tab pattern. Same file selector, same start/end inputs; tab selection determines which ffmpeg command runs (`-c:v copy -c:a copy` vs `-c:a copy -vn`). Reduces clutter on the homepage and makes the tool feel like one coherent operation.
 
 ### Make GIF
 
-Export a clip as an animated GIF. Inputs: file, start time, end time, optional scale/fps reduction. ffmpeg approach: two-pass with a generated palette (`palettegen` + `paletteuse`) for decent quality at small size. Output goes through the existing progress.php job system.
+Export a clip as an animated GIF. Only available for video files 5 seconds or shorter (enforced both in the UI — only shown in the actions dropdown for short clips — and server-side as a hard reject).
+
+Inputs: file, optional scale (default 480px wide), optional fps reduction (default 15fps). ffmpeg two-pass approach for decent quality at small file size:
+
+```bash
+ffmpeg -i input.mp4 -vf "fps=15,scale=480:-1:flags=lanczos,palettegen" palette.png
+ffmpeg -i input.mp4 -i palette.png -vf "fps=15,scale=480:-1:flags=lanczos,paletteuse" output.gif
+```
+
+Output goes through the existing progress.php job system. The two-pass nature means the result PHP file runs pass 1 synchronously (palettegen is fast), then launches pass 2 as the background job.
 
 ### Investigate frei0r filters
 

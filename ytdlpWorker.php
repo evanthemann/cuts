@@ -20,6 +20,7 @@ $formatArg = ($p['formatMode'] === 'combined')
     : $p['vidFormat'] . '+' . $p['audFormat'];
 
 $cmd = $ytdlp
+    . ' --js-runtimes node'
     . ' -f ' . escapeshellarg($formatArg)
     . ' --no-playlist'
     . ' --merge-output-format mp4'
@@ -125,4 +126,8 @@ if ($p['subsEnabled'] && $p['subsMode'] === 'hard' && file_exists($outputFile)) 
     }
 }
 
-echo "\n" . (file_exists($outputFile) ? 'CUTS_DONE:' . $outputWeb : 'CUTS_FAIL') . "\n";
+$status = file_exists($outputFile) ? 'done' : 'failed';
+echo "\n" . ($status === 'done' ? 'CUTS_DONE:' . $outputWeb : 'CUTS_FAIL') . "\n";
+
+require_once __DIR__ . '/jobHistory.php';
+logJobHistory('download', [$p['url'] ?? ''], $status === 'done' ? basename($outputFile) : null, $status);

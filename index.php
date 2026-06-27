@@ -220,8 +220,10 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
                     <a href="trim.php?file=<?= $enc ?>"><button class="w3-button w3-purple w3-small">Trim</button></a>
                     <a href="extractAudio.php?file=<?= $enc ?>"><button class="w3-button w3-green w3-small">Extract audio</button></a>
                   <?php else: ?>
-                    <a href="trimAudio.php?file=<?= $enc ?>"><button class="w3-button w3-purple w3-small">Trim</button></a>
+                    <a href="trim.php?tab=audio&file=<?= $enc ?>"><button class="w3-button w3-purple w3-small">Trim</button></a>
                   <?php endif; ?>
+                  <button type="button" class="w3-button w3-small w3-border"
+                    onclick="openRename('<?= htmlspecialchars($f['name'], ENT_QUOTES) ?>')">Rename</button>
                   <form class="del-form" method="post" action="deleteFile.php" style="display:inline">
                     <input type="hidden" name="filename" value="<?= htmlspecialchars($f['name'], ENT_QUOTES) ?>">
                     <button type="button" class="w3-button w3-red w3-small"
@@ -250,17 +252,9 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
 
           <div class="w3-col s6 m3 w3-margin-bottom">
             <div class="w3-card w3-padding w3-purple tool-card">
-              <h4>Trim video</h4>
-              <p class="w3-small">Cut a clip between two timestamps.</p>
+              <h4>Trim</h4>
+              <p class="w3-small">Cut video or audio between two timestamps.</p>
               <a href="trim.php"><button class="w3-button w3-white w3-small">Open</button></a>
-            </div>
-          </div>
-
-          <div class="w3-col s6 m3 w3-margin-bottom">
-            <div class="w3-card w3-padding w3-green tool-card">
-              <h4>Trim audio</h4>
-              <p class="w3-small">Cut an audio file between two timestamps.</p>
-              <a href="trimAudio.php"><button class="w3-button w3-white w3-small">Open</button></a>
             </div>
           </div>
 
@@ -284,6 +278,23 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
       </div>
 
     </div>
+    <!-- ── RENAME MODAL ─────────────────────────────────────── -->
+    <div id="rename-modal" class="w3-modal" style="display:none" onclick="closeRename()">
+      <div class="w3-modal-content w3-card w3-padding w3-animate-zoom" onclick="event.stopPropagation()" style="max-width:400px;margin:120px auto">
+        <p style="margin-top:0"><b>Rename file</b></p>
+        <form id="rename-form" method="post" action="renameFile.php">
+          <input type="hidden" name="old_name" id="rename-old">
+          <input type="text" name="new_name" id="rename-new"
+            class="w3-input w3-border w3-margin-bottom" style="font-family:monospace"
+            onkeydown="if(event.key==='Escape')closeRename()">
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button type="button" class="w3-button w3-round" onclick="closeRename()">Cancel</button>
+            <button type="submit" class="w3-button w3-blue w3-round">Rename</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- ── CONFIRM MODAL ────────────────────────────────────── -->
     <div id="confirm-modal" class="w3-modal" style="display:none" onclick="closeConfirm()">
       <div class="w3-modal-content w3-card w3-padding w3-animate-zoom" onclick="event.stopPropagation()" style="max-width:340px;margin:120px auto">
@@ -345,8 +356,21 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
         aud.pause(); aud.src = '';
       }
       document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') { closeModal(); closeConfirm(); }
+        if (e.key === 'Escape') { closeModal(); closeConfirm(); closeRename(); }
       });
+
+      function openRename(name) {
+        document.getElementById('rename-old').value = name;
+        var inp = document.getElementById('rename-new');
+        inp.value = name;
+        document.getElementById('rename-modal').style.display = 'block';
+        inp.focus();
+        var dot = name.lastIndexOf('.');
+        inp.setSelectionRange(0, dot > 0 ? dot : name.length);
+      }
+      function closeRename() {
+        document.getElementById('rename-modal').style.display = 'none';
+      }
 
       // Multi-select
       document.getElementById('select-all').addEventListener('change', function() {

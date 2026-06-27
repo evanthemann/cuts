@@ -141,6 +141,50 @@ $jobFiles = array_merge(
         <?php endif; ?>
       </div>
 
+      <!-- Job history -->
+      <?php
+        require_once __DIR__ . '/jobHistory.php';
+        $history = readJobHistory(20);
+        $opLabels = ['trim'=>'Trim','trim_audio'=>'Trim audio','extract_audio'=>'Extract audio','combine'=>'Combine','download'=>'Download'];
+      ?>
+      <div class="w3-card w3-padding w3-margin-bottom">
+        <h3>Recent jobs</h3>
+        <?php if (empty($history)): ?>
+          <p class="w3-text-grey">No jobs recorded yet.</p>
+        <?php else: ?>
+          <table class="w3-table w3-striped w3-bordered w3-small">
+            <thead><tr class="w3-dark-grey"><th>Time</th><th>Op</th><th>Input(s)</th><th>Output</th><th>Status</th></tr></thead>
+            <tbody>
+              <?php foreach ($history as $r):
+                $ago  = round((time() - $r['time']) / 60);
+                $agoStr = $ago < 60 ? $ago . 'm ago' : round($ago/60, 1) . 'h ago';
+                $statusClass = $r['status'] === 'done' ? 'w3-green' : ($r['status'] === 'cancelled' ? 'w3-orange' : 'w3-red');
+                $outputExists = $r['output'] && file_exists(__DIR__ . '/uploads/' . $r['output']);
+              ?>
+              <tr>
+                <td style="white-space:nowrap"><?= htmlspecialchars($agoStr) ?></td>
+                <td><?= htmlspecialchars($opLabels[$r['op']] ?? $r['op']) ?></td>
+                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                    title="<?= htmlspecialchars(implode(', ', $r['inputs'])) ?>">
+                  <?= htmlspecialchars(implode(', ', $r['inputs'])) ?>
+                </td>
+                <td>
+                  <?php if ($outputExists): ?>
+                    <a href="uploads/<?= htmlspecialchars($r['output']) ?>"><?= htmlspecialchars($r['output']) ?></a>
+                  <?php elseif ($r['output']): ?>
+                    <span class="w3-text-grey"><?= htmlspecialchars($r['output']) ?></span>
+                  <?php else: ?>
+                    —
+                  <?php endif; ?>
+                </td>
+                <td><span class="w3-tag w3-small <?= $statusClass ?>"><?= htmlspecialchars($r['status']) ?></span></td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        <?php endif; ?>
+      </div>
+
       <?php include 'backToHomeButton.php'; ?>
     </div>
   </body>

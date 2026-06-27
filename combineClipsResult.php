@@ -29,7 +29,10 @@ foreach ($clips as $c) {
     $dOut = shell_exec($ffprobe . ' -v error -show_entries format=duration -of default=noprint_wrappers=1 ' . escapeshellarg($c['path']) . ' 2>/dev/null');
     if (preg_match('/duration=([\d.]+)/', $dOut ?? '', $dm)) $totalDuration += (float)$dm[1];
 }
-file_put_contents($logFile, 'CUTS_TOTAL_DURATION:' . $totalDuration . "\n");
+file_put_contents($logFile, 'CUTS_TOTAL_DURATION:' . $totalDuration . "\n"
+    . 'CUTS_OP:combine' . "\n"
+    . 'CUTS_INPUTS:' . implode(',', array_column($clips, 'name')) . "\n"
+    . 'CUTS_OUTPUT:' . $outputName . "\n");
 
 if ($mode === 'copy') {
     // Probe all clips upfront to catch codec/format mismatches before running ffmpeg

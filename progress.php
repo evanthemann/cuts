@@ -11,6 +11,9 @@ $cancelled     = false;
 $resultFile    = null;
 $probeData     = false;
 $totalDuration = 0;
+$jobOp         = null;
+$jobInputs     = [];
+$jobOutput     = null;
 
 if (file_exists($logFile)) {
     $rawLines = preg_split('/\r\n|\r|\n/', rtrim(file_get_contents($logFile)));
@@ -23,9 +26,10 @@ if (file_exists($logFile)) {
         if ($line === 'CUTS_FAIL')        $failed        = true;
         if ($line === 'CUTS_CANCELLED')   $cancelled     = true;
         if ($line === 'CUTS_PROBE_START') $probeStart    = $i;
-        if (str_starts_with($line, 'CUTS_TOTAL_DURATION:')) {
-            $totalDuration = (float)substr($line, 20);
-        }
+        if (str_starts_with($line, 'CUTS_TOTAL_DURATION:')) $totalDuration = (float)substr($line, 20);
+        if (str_starts_with($line, 'CUTS_OP:'))            $jobOp         = substr($line, 8);
+        if (str_starts_with($line, 'CUTS_INPUTS:'))        $jobInputs     = explode(',', substr($line, 12));
+        if (str_starts_with($line, 'CUTS_OUTPUT:'))        $jobOutput     = substr($line, 12);
     }
     if ($probeStart !== null) {
         $probeData = implode("\n", array_slice($rawLines, $probeStart + 1));
@@ -54,6 +58,14 @@ if ($totalDuration > 0 && !$done && !$failed) {
 
 $ext     = $resultFile ? strtolower(pathinfo($resultFile, PATHINFO_EXTENSION)) : '';
 $isAudio = in_array($ext, ['mp3', 'm4a', 'wav', 'aac', 'ogg', 'flac']);
+
+// Write job history record on first terminal render
+if (($done || $failed || $cancelled) && $jobOp) {
+    require_once __DIR__ . '/jobHistory.php';
+    $histStatus = $done ? 'done' : ($cancelled ? 'cancelled' : 'failed');
+    logJobHistory($jobOp, $jobInputs, $jobOutput, $histStatus);
+    $jobOp = null; // prevent double-write if somehow rendered twice before cleanup
+}
 
 // Clean up job sidecar files once we've reached a terminal state
 if ($done || $failed || $cancelled) {

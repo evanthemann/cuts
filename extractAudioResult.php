@@ -28,7 +28,10 @@ $pidFile       = __DIR__ . '/uploads/' . $jobId . '.pid';
 $durOut        = shell_exec('/usr/bin/ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1 ' . escapeshellarg($inputPath) . ' 2>/dev/null');
 $totalDuration = 0;
 if (preg_match('/duration=([\d.]+)/', $durOut ?? '', $dm)) $totalDuration = (float)$dm[1];
-file_put_contents($logFile, 'CUTS_TOTAL_DURATION:' . $totalDuration . "\n");
+file_put_contents($logFile, 'CUTS_TOTAL_DURATION:' . $totalDuration . "\n"
+    . 'CUTS_OP:extract_audio' . "\n"
+    . 'CUTS_INPUTS:' . $filename . "\n"
+    . 'CUTS_OUTPUT:' . $outputName . "\n");
 
 $bgCmd = '(' . $cmd . ' >> ' . escapeshellarg($logFile) . ' 2>&1 & _FFPID=$!; echo $_FFPID > ' . escapeshellarg($pidFile)
        . '; wait $_FFPID; rm -f ' . escapeshellarg($pidFile)

@@ -10,6 +10,7 @@ $ytdlp    = '/usr/local/bin/yt-dlp';
 $pathFile = __DIR__ . '/uploads/' . $jobId . '_path.txt';
 
 $cmd = $ytdlp
+    . ' --js-runtimes node'
     . ' -f "18/best[ext=mp4]"'
     . ' --no-playlist'
     . ' --merge-output-format mp4'
