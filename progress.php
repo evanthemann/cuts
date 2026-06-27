@@ -8,23 +8,34 @@ $rawLines   = [];
 $done       = false;
 $failed     = false;
 $resultFile = null;
+$probeData  = false;
 
 if (file_exists($logFile)) {
     $rawLines = preg_split('/\r\n|\r|\n/', rtrim(file_get_contents($logFile)));
-    foreach ($rawLines as $line) {
+    $probeStart = null;
+    foreach ($rawLines as $i => $line) {
         if (str_starts_with($line, 'CUTS_DONE:')) {
             $done       = true;
             $resultFile = substr($line, 10);
         }
-        if ($line === 'CUTS_FAIL') {
-            $failed = true;
-        }
+        if ($line === 'CUTS_FAIL')        $failed     = true;
+        if ($line === 'CUTS_PROBE_START') $probeStart = $i;
+    }
+    if ($probeStart !== null) {
+        $probeData = implode("\n", array_slice($rawLines, $probeStart + 1));
     }
 }
 
-$ext       = $resultFile ? strtolower(pathinfo($resultFile, PATHINFO_EXTENSION)) : '';
-$isAudio   = in_array($ext, ['mp3', 'm4a', 'wav', 'aac', 'ogg', 'flac']);
-$showLines = array_slice(array_filter($rawLines, fn($l) => $l !== '' && !str_starts_with($l, 'CUTS_')), -10);
+// Only show log lines before any CUTS_ markers, last 10
+$displayLines = [];
+foreach ($rawLines as $line) {
+    if (str_starts_with($line, 'CUTS_')) break;
+    if ($line !== '') $displayLines[] = $line;
+}
+$showLines = array_slice($displayLines, -10);
+
+$ext     = $resultFile ? strtolower(pathinfo($resultFile, PATHINFO_EXTENSION)) : '';
+$isAudio = in_array($ext, ['mp3', 'm4a', 'wav', 'aac', 'ogg', 'flac']);
 ?>
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
@@ -57,7 +68,13 @@ $showLines = array_slice(array_filter($rawLines, fn($l) => $l !== '' && !str_sta
 
         <?php elseif ($failed): ?>
           <h2 class="w3-text-red">Failed</h2>
-          <p>The command did not produce an output file. See the log below.</p>
+          <?php if ($probeData !== false): ?>
+            <p>Fast mode requires all clips to share the same codec, resolution, frame rate, and pixel format. Here's what ffprobe found for each clip:</p>
+            <pre style="background:#111;color:#ddd;padding:12px;overflow:auto;max-height:400px;font-size:12px;margin-top:8px"><?= htmlspecialchars($probeData) ?></pre>
+            <p class="w3-margin-top">Go back and use <strong>Re-encode</strong> mode to combine clips with different settings.</p>
+          <?php else: ?>
+            <p>The command did not produce an output file. See the log below.</p>
+          <?php endif; ?>
 
         <?php else: ?>
           <h2>Processing…</h2>

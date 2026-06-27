@@ -21,27 +21,48 @@
                 $name = htmlspecialchars(basename($f));
                 $opts .= "<option value=\"$name\">$name</option>";
             }
-            for ($i = 1; $i <= 5; $i++):
           ?>
-          <label class="w3-text-white"><b>Clip <?= $i ?><?= $i > 2 ? ' <span class="w3-small" style="opacity:.7">(optional)</span>' : '' ?></b></label>
-          <select class="w3-select w3-border w3-margin-bottom" name="clips[]">
-            <?= $opts ?>
-          </select>
-          <?php endfor; ?>
+          <div id="clipSlots">
+            <label class="w3-text-white"><b>Clip 1</b></label>
+            <select class="w3-select w3-border w3-margin-bottom" name="clips[]">
+              <?= $opts ?>
+            </select>
+            <label class="w3-text-white"><b>Clip 2</b></label>
+            <select class="w3-select w3-border w3-margin-bottom" name="clips[]">
+              <?= $opts ?>
+            </select>
+          </div>
+          <button type="button" class="w3-button w3-white w3-text-orange w3-round w3-margin-bottom" onclick="addClip()">+ Add clip</button>
 
           <label class="w3-text-white w3-margin-bottom" style="display:block"><b>Mode</b></label>
           <label style="display:block" class="w3-margin-bottom">
-            <input type="radio" name="mode" value="copy" checked>
-            <span class="w3-text-white"><b>Fast</b> — copy codec, no re-encoding (clips must be same format)</span>
+            <input type="radio" name="mode" value="reencode" checked>
+            <span class="w3-text-white"><b>Re-encode</b> — converts to H.264 MP4, works with mixed formats</span>
           </label>
           <label style="display:block" class="w3-margin-bottom">
-            <input type="radio" name="mode" value="reencode">
-            <span class="w3-text-white"><b>Re-encode</b> — converts to H.264 MP4, works with mixed formats</span>
+            <input type="radio" name="mode" value="copy">
+            <span class="w3-text-white"><b>Fast</b> — copy codec, no re-encoding (clips must be identical format)</span>
           </label>
           <button type="submit" class="w3-button w3-white w3-text-orange w3-round">Combine</button>
         </form>
       </div>
       <div style="margin-top:16px"><?php include 'backToHomeButton.php'; ?></div>
     </div>
+    <script>
+    var clipCount = 2;
+    function addClip() {
+      clipCount++;
+      var slots = document.getElementById('clipSlots');
+      var lastSelect = slots.querySelector('select:last-of-type');
+      var newSelect = lastSelect.cloneNode(true);
+      newSelect.value = '';
+      var label = document.createElement('label');
+      label.className = 'w3-text-white';
+      label.innerHTML = '<b>Clip ' + clipCount + ' <span class="w3-small" style="opacity:.7">(optional)</span></b>';
+      slots.appendChild(label);
+      slots.appendChild(document.createElement('br'));
+      slots.appendChild(newSelect);
+    }
+    </script>
   </body>
 </html>

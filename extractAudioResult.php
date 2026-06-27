@@ -27,7 +27,7 @@ $logFile = __DIR__ . '/uploads/' . $jobId . '.log';
 
 $bgCmd = '(' . $cmd . ' >> ' . escapeshellarg($logFile) . ' 2>&1'
        . '; if [ -f ' . escapeshellarg($outputPath) . ' ]; then echo ' . escapeshellarg('CUTS_DONE:' . $outputWeb) . ' >> ' . escapeshellarg($logFile)
-       . '; else echo CUTS_FAIL >> ' . escapeshellarg($logFile) . '; fi) &';
+       . '; else echo CUTS_FAIL >> ' . escapeshellarg($logFile) . '; fi) > /dev/null 2>&1 &';
 
 shell_exec($bgCmd);
 

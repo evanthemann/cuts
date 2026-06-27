@@ -1,6 +1,7 @@
 <?php
-$mode       = ($_POST['mode'] ?? 'copy') === 'reencode' ? 'reencode' : 'copy';
+$mode       = ($_POST['mode'] ?? 'reencode') === 'copy' ? 'copy' : 'reencode';
 $ffmpeg     = '/usr/bin/ffmpeg';
+$ffprobe    = '/usr/bin/ffprobe';
 $uploadsDir = __DIR__ . '/uploads/';
 
 $clips = [];
@@ -32,19 +33,47 @@ if ($mode === 'copy') {
          . ' -c copy -y '
          . escapeshellarg($outputPath);
 
+    // Build ffprobe section to run on failure
+    $probeCmd = '';
+    foreach ($clips as $c) {
+        $probeCmd .= '; echo ' . escapeshellarg('--- ' . $c['name'] . ' ---') . ' >> ' . escapeshellarg($logFile)
+                   . '; ' . $ffprobe . ' -v error -select_streams v:0'
+                   . ' -show_entries stream=codec_name,width,height,r_frame_rate,pix_fmt,sample_aspect_ratio'
+                   . ' -of default=noprint_wrappers=1 ' . escapeshellarg($c['path']) . ' >> ' . escapeshellarg($logFile) . ' 2>&1';
+    }
+
     $bgCmd = '(' . $cmd . ' >> ' . escapeshellarg($logFile) . ' 2>&1'
            . '; rm -f ' . escapeshellarg($listPath)
-           . '; if [ -f ' . escapeshellarg($outputPath) . ' ]; then echo ' . escapeshellarg('CUTS_DONE:' . $outputWeb) . ' >> ' . escapeshellarg($logFile)
-           . '; else echo CUTS_FAIL >> ' . escapeshellarg($logFile) . '; fi) &';
+           . '; if [ -s ' . escapeshellarg($outputPath) . ' ]; then echo ' . escapeshellarg('CUTS_DONE:' . $outputWeb) . ' >> ' . escapeshellarg($logFile)
+           . '; else echo CUTS_FAIL >> ' . escapeshellarg($logFile)
+           . '; echo CUTS_PROBE_START >> ' . escapeshellarg($logFile)
+           . $probeCmd
+           . '; fi) > /dev/null 2>&1 &';
 } else {
+    // Probe first clip for resolution and frame rate so all clips are normalized to match
+    $probeOut = shell_exec($ffprobe . ' -v error -select_streams v:0'
+        . ' -show_entries stream=width,height,r_frame_rate'
+        . ' -of default=noprint_wrappers=1 ' . escapeshellarg($clips[0]['path']) . ' 2>/dev/null');
+
+    $targetW = 1280; $targetH = 720; $targetFps = '30';
+    if ($probeOut) {
+        if (preg_match('/width=(\d+)/', $probeOut, $m))       $targetW   = (int)$m[1];
+        if (preg_match('/height=(\d+)/', $probeOut, $m))      $targetH   = (int)$m[1];
+        if (preg_match('/r_frame_rate=(\S+)/', $probeOut, $m)) $targetFps = $m[1];
+    }
+
     $inputArgs    = '';
+    $filterParts  = '';
     $filterInputs = '';
     foreach ($clips as $i => $c) {
         $inputArgs    .= ' -i ' . escapeshellarg($c['path']);
-        $filterInputs .= "[{$i}:v:0][{$i}:a:0]";
+        $filterParts  .= "[{$i}:v]scale={$targetW}:{$targetH}:force_original_aspect_ratio=decrease,"
+                       . "pad={$targetW}:{$targetH}:(ow-iw)/2:(oh-ih)/2,"
+                       . "fps={$targetFps},setsar=1[v{$i}];";
+        $filterInputs .= "[v{$i}][{$i}:a:0]";
     }
     $n             = count($clips);
-    $filterComplex = $filterInputs . "concat=n={$n}:v=1:a=1[outv][outa]";
+    $filterComplex = $filterParts . $filterInputs . "concat=n={$n}:v=1:a=1[outv][outa]";
 
     $cmd = $ffmpeg . ' -loglevel error'
          . $inputArgs
@@ -54,8 +83,8 @@ if ($mode === 'copy') {
          . escapeshellarg($outputPath);
 
     $bgCmd = '(' . $cmd . ' >> ' . escapeshellarg($logFile) . ' 2>&1'
-           . '; if [ -f ' . escapeshellarg($outputPath) . ' ]; then echo ' . escapeshellarg('CUTS_DONE:' . $outputWeb) . ' >> ' . escapeshellarg($logFile)
-           . '; else echo CUTS_FAIL >> ' . escapeshellarg($logFile) . '; fi) &';
+           . '; if [ -s ' . escapeshellarg($outputPath) . ' ]; then echo ' . escapeshellarg('CUTS_DONE:' . $outputWeb) . ' >> ' . escapeshellarg($logFile)
+           . '; else echo CUTS_FAIL >> ' . escapeshellarg($logFile) . '; fi) > /dev/null 2>&1 &';
 }
 
 shell_exec($bgCmd);
