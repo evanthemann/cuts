@@ -12,21 +12,28 @@ $basename = pathinfo($filename, PATHINFO_FILENAME);
 
 if ($format === 'mp3') {
     $outputName = $basename . '_audio.mp3';
-    $cmd = $ffmpeg . ' -loglevel error -i ' . escapeshellarg($inputPath) . ' -vn -c:a libmp3lame -q:a 2 -y ';
+    $cmd = $ffmpeg . ' -loglevel error -stats -i ' . escapeshellarg($inputPath) . ' -vn -c:a libmp3lame -q:a 2 -y ';
 } else {
     $outputName = $basename . '_audio.m4a';
-    $cmd = $ffmpeg . ' -loglevel error -i ' . escapeshellarg($inputPath) . ' -vn -c:a copy -y ';
+    $cmd = $ffmpeg . ' -loglevel error -stats -i ' . escapeshellarg($inputPath) . ' -vn -c:a copy -y ';
 }
 
 $outputPath = __DIR__ . '/uploads/' . $outputName;
 $outputWeb  = 'uploads/' . $outputName;
 $cmd       .= escapeshellarg($outputPath);
 
-$jobId   = uniqid('job_');
-$logFile = __DIR__ . '/uploads/' . $jobId . '.log';
+$jobId         = uniqid('job_');
+$logFile       = __DIR__ . '/uploads/' . $jobId . '.log';
+$pidFile       = __DIR__ . '/uploads/' . $jobId . '.pid';
+$durOut        = shell_exec('/usr/bin/ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1 ' . escapeshellarg($inputPath) . ' 2>/dev/null');
+$totalDuration = 0;
+if (preg_match('/duration=([\d.]+)/', $durOut ?? '', $dm)) $totalDuration = (float)$dm[1];
+file_put_contents($logFile, 'CUTS_TOTAL_DURATION:' . $totalDuration . "\n");
 
-$bgCmd = '(' . $cmd . ' >> ' . escapeshellarg($logFile) . ' 2>&1'
-       . '; if [ -f ' . escapeshellarg($outputPath) . ' ]; then echo ' . escapeshellarg('CUTS_DONE:' . $outputWeb) . ' >> ' . escapeshellarg($logFile)
+$bgCmd = '(' . $cmd . ' >> ' . escapeshellarg($logFile) . ' 2>&1 & _FFPID=$!; echo $_FFPID > ' . escapeshellarg($pidFile)
+       . '; wait $_FFPID; rm -f ' . escapeshellarg($pidFile)
+       . '; if grep -q CUTS_CANCELLED ' . escapeshellarg($logFile) . ' 2>/dev/null; then :'
+       . '; elif [ -s ' . escapeshellarg($outputPath) . ' ]; then echo ' . escapeshellarg('CUTS_DONE:' . $outputWeb) . ' >> ' . escapeshellarg($logFile)
        . '; else echo CUTS_FAIL >> ' . escapeshellarg($logFile) . '; fi) > /dev/null 2>&1 &';
 
 shell_exec($bgCmd);

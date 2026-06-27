@@ -4,11 +4,13 @@ if (!$jobId) { header('Location: index.php'); exit; }
 
 $logFile = __DIR__ . '/uploads/' . $jobId . '.log';
 
-$rawLines   = [];
-$done       = false;
-$failed     = false;
-$resultFile = null;
-$probeData  = false;
+$rawLines      = [];
+$done          = false;
+$failed        = false;
+$cancelled     = false;
+$resultFile    = null;
+$probeData     = false;
+$totalDuration = 0;
 
 if (file_exists($logFile)) {
     $rawLines = preg_split('/\r\n|\r|\n/', rtrim(file_get_contents($logFile)));
@@ -18,24 +20,51 @@ if (file_exists($logFile)) {
             $done       = true;
             $resultFile = substr($line, 10);
         }
-        if ($line === 'CUTS_FAIL')        $failed     = true;
-        if ($line === 'CUTS_PROBE_START') $probeStart = $i;
+        if ($line === 'CUTS_FAIL')        $failed        = true;
+        if ($line === 'CUTS_CANCELLED')   $cancelled     = true;
+        if ($line === 'CUTS_PROBE_START') $probeStart    = $i;
+        if (str_starts_with($line, 'CUTS_TOTAL_DURATION:')) {
+            $totalDuration = (float)substr($line, 20);
+        }
     }
     if ($probeStart !== null) {
         $probeData = implode("\n", array_slice($rawLines, $probeStart + 1));
     }
 }
 
-// Only show log lines before any CUTS_ markers, last 10
+// Show log lines before terminal CUTS_ markers (skip metadata sentinels), last 10
 $displayLines = [];
 foreach ($rawLines as $line) {
-    if (str_starts_with($line, 'CUTS_')) break;
+    if ($line === 'CUTS_FAIL' || $line === 'CUTS_CANCELLED' || $line === 'CUTS_PROBE_START' || str_starts_with($line, 'CUTS_DONE:')) break;
+    if (str_starts_with($line, 'CUTS_')) continue;
     if ($line !== '') $displayLines[] = $line;
 }
 $showLines = array_slice($displayLines, -10);
 
+// Parse current encode time from latest stats line
+$currentSec = 0;
+if ($totalDuration > 0 && !$done && !$failed) {
+    foreach (array_reverse($displayLines) as $line) {
+        if (preg_match('/time=(\d+):(\d+):([\d.]+)/', $line, $tm)) {
+            $currentSec = $tm[1] * 3600 + $tm[2] * 60 + (float)$tm[3];
+            break;
+        }
+    }
+}
+
 $ext     = $resultFile ? strtolower(pathinfo($resultFile, PATHINFO_EXTENSION)) : '';
 $isAudio = in_array($ext, ['mp3', 'm4a', 'wav', 'aac', 'ogg', 'flac']);
+
+// Clean up job sidecar files once we've reached a terminal state
+if ($done || $failed || $cancelled) {
+    $base = __DIR__ . '/uploads/' . $jobId;
+    foreach (['.log', '.pid', '_concat.txt', '_params.json'] as $ext) {
+        $f = $base . $ext;
+        if (file_exists($f)) unlink($f);
+    }
+    // fmt_ files (yt-dlp format cache)
+    foreach (glob(__DIR__ . '/uploads/fmt_' . $jobId . '*') ?: [] as $f) unlink($f);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
@@ -43,7 +72,7 @@ $isAudio = in_array($ext, ['mp3', 'm4a', 'wav', 'aac', 'ogg', 'flac']);
     <meta charset="utf-8">
     <title>Cuts – Processing</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-    <?php if (!$done && !$failed): ?>
+    <?php if (!$done && !$failed && !$cancelled): ?>
     <meta http-equiv="refresh" content="3">
     <?php endif; ?>
       <?php include 'darkHead.php'; ?>
@@ -60,11 +89,19 @@ $isAudio = in_array($ext, ['mp3', 'm4a', 'wav', 'aac', 'ogg', 'flac']);
               <source src="<?= htmlspecialchars($resultFile) ?>">
             </audio>
           <?php else: ?>
-            <video controls class="w3-margin-top" style="max-width:100%">
+            <video controls preload="metadata" class="w3-margin-top" style="width:100%;max-width:100%">
               <source src="<?= htmlspecialchars($resultFile) ?>">
             </video>
+            <a href="<?= htmlspecialchars($resultFile) ?>" download
+               class="w3-button w3-dark-grey w3-small w3-round w3-margin-top" style="display:inline-block">
+              Download
+            </a>
           <?php endif; ?>
           <p class="w3-small w3-text-grey w3-margin-top"><?= htmlspecialchars(basename($resultFile)) ?></p>
+
+        <?php elseif ($cancelled): ?>
+          <h2 class="w3-text-orange">Cancelled</h2>
+          <p class="w3-text-grey">The job was stopped.</p>
 
         <?php elseif ($failed): ?>
           <h2 class="w3-text-red">Failed</h2>
@@ -78,11 +115,25 @@ $isAudio = in_array($ext, ['mp3', 'm4a', 'wav', 'aac', 'ogg', 'flac']);
 
         <?php else: ?>
           <h2>Processing…</h2>
-          <p class="w3-text-grey">Page refreshes every 3 seconds.</p>
+          <?php if ($totalDuration > 0): ?>
+            <?php $pct = min(100, $totalDuration > 0 ? (int)round($currentSec / $totalDuration * 100) : 0); ?>
+            <div class="w3-light-grey w3-round w3-margin-top" style="height:22px">
+              <div class="w3-blue w3-round" style="height:22px;width:<?= $pct ?>%;transition:width 0.5s"></div>
+            </div>
+            <p class="w3-small w3-text-grey w3-margin-top"><?= $pct ?>% &nbsp;·&nbsp; refreshes every 3 seconds</p>
+          <?php else: ?>
+            <p class="w3-text-grey">Page refreshes every 3 seconds.</p>
+          <?php endif; ?>
+          <form method="post" action="cancelJob.php" class="w3-margin-top">
+            <input type="hidden" name="job" value="<?= htmlspecialchars($jobId) ?>">
+            <button type="submit" class="w3-button w3-red w3-round w3-small">Cancel</button>
+          </form>
         <?php endif; ?>
 
         <?php if (!empty($showLines)): ?>
           <pre style="background:#111;color:#ddd;padding:12px;overflow:auto;max-height:460px;font-size:12px;margin-top:16px"><?= htmlspecialchars(implode("\n", $showLines)) ?></pre>
+        <?php elseif (!$done && !$failed && !$cancelled && !file_exists($logFile)): ?>
+          <p class="w3-text-grey w3-small w3-margin-top">Job not found — it may have already completed.</p>
         <?php elseif (!$done && !$failed): ?>
           <p class="w3-text-grey w3-small w3-margin-top">Waiting for output…</p>
         <?php endif; ?>

@@ -23,6 +23,14 @@ $outputPath = $uploadsDir . $outputName;
 $outputWeb  = 'uploads/' . $outputName;
 $logFile    = $uploadsDir . $jobId . '.log';
 
+$pidFile       = $uploadsDir . $jobId . '.pid';
+$totalDuration = 0;
+foreach ($clips as $c) {
+    $dOut = shell_exec($ffprobe . ' -v error -show_entries format=duration -of default=noprint_wrappers=1 ' . escapeshellarg($c['path']) . ' 2>/dev/null');
+    if (preg_match('/duration=([\d.]+)/', $dOut ?? '', $dm)) $totalDuration += (float)$dm[1];
+}
+file_put_contents($logFile, 'CUTS_TOTAL_DURATION:' . $totalDuration . "\n");
+
 if ($mode === 'copy') {
     // Probe all clips upfront to catch codec/format mismatches before running ffmpeg
     $probeLines = '';
@@ -40,7 +48,7 @@ if ($mode === 'copy') {
         // Different codecs — fail immediately without running ffmpeg
         file_put_contents($logFile,
             'Clips use different codecs (' . implode(', ', $uniqueCodecs) . ') and cannot be joined without re-encoding.' . "\n"
-            . "CUTS_FAIL\nCUTS_PROBE_START\n" . $probeLines);
+            . "CUTS_FAIL\nCUTS_PROBE_START\n" . $probeLines, FILE_APPEND);
         header('Location: progress.php?job=' . urlencode($jobId));
         exit;
     }
@@ -60,18 +68,38 @@ if ($mode === 'copy') {
 
     // Build ffprobe section to run on failure (other incompatibilities)
     $escapedProbeLines = escapeshellarg($probeLines);
-    $bgCmd = '(' . $cmd . ' >> ' . escapeshellarg($logFile) . ' 2>&1'
-           . '; rm -f ' . escapeshellarg($listPath)
-           . '; if [ -s ' . escapeshellarg($outputPath) . ' ]; then echo ' . escapeshellarg('CUTS_DONE:' . $outputWeb) . ' >> ' . escapeshellarg($logFile)
+    $bgCmd = '(' . $cmd . ' >> ' . escapeshellarg($logFile) . ' 2>&1 & _FFPID=$!; echo $_FFPID > ' . escapeshellarg($pidFile)
+           . '; wait $_FFPID; rm -f ' . escapeshellarg($pidFile) . ' ' . escapeshellarg($listPath)
+           . '; if grep -q CUTS_CANCELLED ' . escapeshellarg($logFile) . ' 2>/dev/null; then :'
+           . '; elif [ -s ' . escapeshellarg($outputPath) . ' ]; then echo ' . escapeshellarg('CUTS_DONE:' . $outputWeb) . ' >> ' . escapeshellarg($logFile)
            . '; else echo CUTS_FAIL >> ' . escapeshellarg($logFile)
            . '; echo CUTS_PROBE_START >> ' . escapeshellarg($logFile)
            . '; echo ' . $escapedProbeLines . ' >> ' . escapeshellarg($logFile)
            . '; fi) > /dev/null 2>&1 &';
 } else {
-    // Probe first clip for resolution and frame rate so all clips are normalized to match
+    // Pick the reference clip: explicit index or auto (highest resolution)
+    $refParam = $_POST['reference'] ?? 'auto';
+    if ($refParam === 'auto') {
+        $bestIdx = 0; $bestPixels = 0;
+        foreach ($clips as $i => $c) {
+            $pOut = shell_exec($ffprobe . ' -v error -select_streams v:0'
+                . ' -show_entries stream=width,height'
+                . ' -of default=noprint_wrappers=1 ' . escapeshellarg($c['path']) . ' 2>/dev/null');
+            $w = 0; $h = 0;
+            if (preg_match('/width=(\d+)/', $pOut ?? '', $m))  $w = (int)$m[1];
+            if (preg_match('/height=(\d+)/', $pOut ?? '', $m)) $h = (int)$m[1];
+            if ($w * $h > $bestPixels) { $bestPixels = $w * $h; $bestIdx = $i; }
+        }
+        $refClip = $clips[$bestIdx];
+    } else {
+        $refIdx  = max(0, min((int)$refParam, count($clips) - 1));
+        $refClip = $clips[$refIdx];
+    }
+
+    // Probe reference clip for resolution and frame rate
     $probeOut = shell_exec($ffprobe . ' -v error -select_streams v:0'
         . ' -show_entries stream=width,height,r_frame_rate'
-        . ' -of default=noprint_wrappers=1 ' . escapeshellarg($clips[0]['path']) . ' 2>/dev/null');
+        . ' -of default=noprint_wrappers=1 ' . escapeshellarg($refClip['path']) . ' 2>/dev/null');
 
     $targetW = 1280; $targetH = 720; $targetFps = '30';
     if ($probeOut) {
@@ -93,15 +121,17 @@ if ($mode === 'copy') {
     $n             = count($clips);
     $filterComplex = $filterParts . $filterInputs . "concat=n={$n}:v=1:a=1[outv][outa]";
 
-    $cmd = $ffmpeg . ' -loglevel error'
+    $cmd = $ffmpeg . ' -loglevel error -stats'
          . $inputArgs
          . ' -filter_complex ' . escapeshellarg($filterComplex)
          . ' -map "[outv]" -map "[outa]"'
          . ' -c:v libx264 -c:a aac -y '
          . escapeshellarg($outputPath);
 
-    $bgCmd = '(' . $cmd . ' >> ' . escapeshellarg($logFile) . ' 2>&1'
-           . '; if [ -s ' . escapeshellarg($outputPath) . ' ]; then echo ' . escapeshellarg('CUTS_DONE:' . $outputWeb) . ' >> ' . escapeshellarg($logFile)
+    $bgCmd = '(' . $cmd . ' >> ' . escapeshellarg($logFile) . ' 2>&1 & _FFPID=$!; echo $_FFPID > ' . escapeshellarg($pidFile)
+           . '; wait $_FFPID; rm -f ' . escapeshellarg($pidFile)
+           . '; if grep -q CUTS_CANCELLED ' . escapeshellarg($logFile) . ' 2>/dev/null; then :'
+           . '; elif [ -s ' . escapeshellarg($outputPath) . ' ]; then echo ' . escapeshellarg('CUTS_DONE:' . $outputWeb) . ' >> ' . escapeshellarg($logFile)
            . '; else echo CUTS_FAIL >> ' . escapeshellarg($logFile) . '; fi) > /dev/null 2>&1 &';
 }
 

@@ -14,18 +14,23 @@ $outputWeb  = 'uploads/' . $outputName;
 
 $ffmpeg = '/usr/bin/ffmpeg';
 $cmd = $ffmpeg
-    . ' -loglevel error'
+    . ' -loglevel error -stats'
     . ' -i ' . escapeshellarg($inputPath)
     . ' -ss ' . $startSeconds
     . ' -to ' . $endSeconds
     . ' -c:a copy -y '
     . escapeshellarg($outputPath);
 
-$jobId   = uniqid('job_');
-$logFile = __DIR__ . '/uploads/' . $jobId . '.log';
+$jobId         = uniqid('job_');
+$logFile       = __DIR__ . '/uploads/' . $jobId . '.log';
+$pidFile       = __DIR__ . '/uploads/' . $jobId . '.pid';
+$totalDuration = max(0, $endSeconds - $startSeconds);
+file_put_contents($logFile, 'CUTS_TOTAL_DURATION:' . $totalDuration . "\n");
 
-$bgCmd = '(' . $cmd . ' >> ' . escapeshellarg($logFile) . ' 2>&1'
-       . '; if [ -f ' . escapeshellarg($outputPath) . ' ]; then echo ' . escapeshellarg('CUTS_DONE:' . $outputWeb) . ' >> ' . escapeshellarg($logFile)
+$bgCmd = '(' . $cmd . ' >> ' . escapeshellarg($logFile) . ' 2>&1 & _FFPID=$!; echo $_FFPID > ' . escapeshellarg($pidFile)
+       . '; wait $_FFPID; rm -f ' . escapeshellarg($pidFile)
+       . '; if grep -q CUTS_CANCELLED ' . escapeshellarg($logFile) . ' 2>/dev/null; then :'
+       . '; elif [ -s ' . escapeshellarg($outputPath) . ' ]; then echo ' . escapeshellarg('CUTS_DONE:' . $outputWeb) . ' >> ' . escapeshellarg($logFile)
        . '; else echo CUTS_FAIL >> ' . escapeshellarg($logFile) . '; fi) > /dev/null 2>&1 &';
 
 shell_exec($bgCmd);

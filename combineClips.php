@@ -36,13 +36,29 @@
 
           <label class="w3-text-white w3-margin-bottom" style="display:block"><b>Mode</b></label>
           <label style="display:block" class="w3-margin-bottom">
-            <input type="radio" name="mode" value="reencode" checked>
+            <input type="radio" name="mode" value="reencode" checked onchange="showHideRef()">
             <span class="w3-text-white"><b>Re-encode</b> — converts to H.264 MP4, works with mixed formats</span>
           </label>
           <label style="display:block" class="w3-margin-bottom">
-            <input type="radio" name="mode" value="copy">
+            <input type="radio" name="mode" value="copy" onchange="showHideRef()">
             <span class="w3-text-white"><b>Fast</b> — copy codec, no re-encoding (clips must be identical format)</span>
           </label>
+
+          <div id="ref-section" class="w3-margin-bottom">
+            <label class="w3-text-white w3-small" style="display:block;margin-bottom:6px;opacity:.85"><b>Quality reference</b> — whose resolution &amp; frame rate to target</label>
+            <div id="ref-radios">
+              <label style="display:block" class="w3-text-white w3-small w3-margin-bottom">
+                <input type="radio" name="reference" value="0"> Clip 1
+              </label>
+              <label style="display:block" class="w3-text-white w3-small w3-margin-bottom">
+                <input type="radio" name="reference" value="1"> Clip 2
+              </label>
+            </div>
+            <label style="display:block" class="w3-text-white w3-small">
+              <input type="radio" name="reference" value="auto" checked> Auto — use highest resolution clip
+            </label>
+          </div>
+
           <button type="submit" class="w3-button w3-white w3-text-orange w3-round">Combine</button>
         </form>
       </div>
@@ -58,11 +74,23 @@
       newSelect.value = '';
       var label = document.createElement('label');
       label.className = 'w3-text-white';
-      label.innerHTML = '<b>Clip ' + clipCount + ' <span class="w3-small" style="opacity:.7">(optional)</span></b>';
+      label.innerHTML = '<b>Clip ' + clipCount + '</b>';
       slots.appendChild(label);
       slots.appendChild(document.createElement('br'));
       slots.appendChild(newSelect);
+
+      var refRadios = document.getElementById('ref-radios');
+      var row = document.createElement('label');
+      row.style.display = 'block';
+      row.className = 'w3-text-white w3-small w3-margin-bottom';
+      row.innerHTML = '<input type="radio" name="reference" value="' + (clipCount - 1) + '"> Clip ' + clipCount;
+      refRadios.appendChild(row);
     }
+    function showHideRef() {
+      var mode = document.querySelector('input[name="mode"]:checked').value;
+      document.getElementById('ref-section').style.display = mode === 'reencode' ? 'block' : 'none';
+    }
+    showHideRef();
     </script>
   </body>
 </html>

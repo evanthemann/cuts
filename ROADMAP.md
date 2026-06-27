@@ -55,6 +55,68 @@
 - [x] "Your files" table — View button per row opens file in a w3-modal (video/audio player inline)
 - [x] Dark mode
 
+### Homepage file list — actions dropdown + smart multi-select combine
+
+**Per-row actions:**
+
+Replace the row of buttons next to each file with just two controls: a **Delete** button and an **Actions** dropdown. The dropdown is context-aware based on media type and file properties:
+
+- **Any video** → Trim, Extract audio
+- **Any audio** → Trim audio
+- **Video < 5 seconds** → also shows Make GIF (once that tool exists)
+- Future tools slot in here automatically by type
+
+Detecting duration/type: already have ffprobe metadata available in the file table — reuse it. < 5s threshold based on `format.duration` from the existing probe call.
+
+**Multi-select combine:**
+
+When 2+ files are checked in the homepage table, the selection bar (already exists for bulk delete) also shows a **Combine clips** button alongside Delete. Clicking it redirects to `combineClips.php` with all selected filenames passed as GET params (`?clips[]=file1.mp4&clips[]=file2.mp4`). The combine page reads those params and pre-selects the dropdowns — user still sees the full form (mode, reference clip, etc.) and hits Combine themselves.
+
+**Implementation notes:**
+- Dropdown: a `<div>` with a toggle button + absolutely-positioned list; close on outside click. w3.css `w3-dropdown-click` pattern works here.
+- Pre-selecting dropdowns in `combineClips.php`: read `$_GET['clips']` and emit `selected` on the matching `<option>` for the first N slots; add extra slots if more clips are passed than the default 2.
+- Only video files should appear as combine candidates (filter out audio in the selection bar check).
+
+### Cancel running job
+
+Add a **Cancel** button to `progress.php` that kills the background ffmpeg process mid-run.
+
+**How it's possible without pkill:**
+
+Capture ffmpeg's PID inside the subshell and write it to a `.pid` sidecar file:
+```bash
+(ffmpeg ... & FFMPEG_PID=$!; echo $FFMPEG_PID > job.pid; wait $FFMPEG_PID; ...) > /dev/null 2>&1 &
+```
+A `cancelJob.php` endpoint reads the `.pid` file and sends SIGTERM via `posix_kill((int)$pid, SIGTERM)` — no `pkill`, no root, just PHP's built-in POSIX function (available as long as the `posix` extension is loaded, which it typically is on Linux shared hosts).
+
+`progress.php` shows the Cancel button only while the job is still running (i.e. not yet done/failed). On cancel: write `CUTS_CANCELLED` to the log, redirect back to progress.php which renders a "Cancelled" state.
+
+**Edge cases to handle:**
+- PID file missing (job finished before cancel was clicked) — treat as already done
+- Process already gone (PID reused by OS) — `posix_kill` returns false gracefully
+- Partial output file left behind — delete it in `cancelJob.php`
+
+### Progress bar on processing page
+
+Show a real-time percent-complete bar while ffmpeg is running.
+
+**How it works:**
+
+1. Before launching the background ffmpeg job, run `ffprobe` synchronously to get the total frame count of the expected output (duration × fps of the first/reference clip).
+2. ffmpeg's `-stats` output writes lines like `frame= 1234 ...` to the log file — these are already being captured.
+3. `progress.php` (on each 3-second meta-refresh) reads the log, finds the last `frame=` line, and computes `pct = current_frame / total_frames * 100`.
+4. Render a `w3-light-grey` / `w3-blue` w3.css progress bar (`<div class="w3-grey"><div class="w3-blue" style="height:24px;width:{$pct}%"></div></div>`) plus a `{$pct}%` label.
+
+**Scope:**
+- Start with combine (re-encode mode) since that's the longest job and already uses `-stats`.
+- Once working, apply to trim, extract audio — all jobs that already write to the same log pattern.
+- Copy-mode combine and jobs with no video stream can skip the bar (or show indeterminate spinner).
+
+**Notes:**
+- Total frames: `ffprobe -v error -select_streams v:0 -show_entries stream=nb_frames` gives it directly for some containers; fallback is `duration × r_frame_rate` for containers that don't store it.
+- Edge case: if `nb_frames` is unavailable and duration probe fails, just omit the bar and show the existing "Waiting for output…" text — don't block the job.
+- The bar disappears once `CUTS_DONE` or `CUTS_FAIL` is written; the done/fail state renders as it does today.
+
 ### Generate subtitles
 
 Automatically generate a subtitle file from a video's audio using a speech-to-text engine.
@@ -93,7 +155,23 @@ Each person gets their own login with isolated uploads and job history.
 - Logout button in the header
 - Consider: single shared ffmpeg/yt-dlp queue vs. per-user concurrent jobs
 
-### Low-bandwidth subtitle workflow
+### Unified trim page
+
+Merge `trim.php` and `trimAudio.php` into a single page with two tabs — **Video** and **Audio** — using w3.css tab pattern. Same file selector, same start/end inputs; tab selection determines which ffmpeg command runs (`-c:v copy -c:a copy` vs `-c:a copy -vn`). Reduces clutter on the homepage and makes the tool feel like one coherent operation.
+
+### Make GIF
+
+Export a clip as an animated GIF. Inputs: file, start time, end time, optional scale/fps reduction. ffmpeg approach: two-pass with a generated palette (`palettegen` + `paletteuse`) for decent quality at small size. Output goes through the existing progress.php job system.
+
+### Investigate frei0r filters
+
+Audit the available frei0r plugin set (`frei0r-plugins` package) and decide which effects are worth exposing as tools or options. Candidates: color correction, blur, edge detection, film grain, chroma key. Output of this investigation: a short list of frei0r filters to build UI around.
+
+### Investigate MoviePy integration
+
+Survey what MoviePy can do that ffmpeg alone can't easily expose through a simple PHP/shell interface. Candidates: programmatic clip composition, text overlays with Python font rendering, speed ramping, image sequences. Output: decide whether any MoviePy capabilities are worth adding a Python worker script for, or whether ffmpeg filters cover the same ground.
+
+### ~~Low-bandwidth subtitle workflow~~ (done)
 
 **Problem:** Burning hard subs onto a 144p video produces ~10px text — completely unreadable.
 
