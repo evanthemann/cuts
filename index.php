@@ -109,7 +109,8 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
     <title>Cuts</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
-      .file-name { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+      .file-name { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+      @media (min-width: 601px) { .file-name { max-width: 280px; } }
       .tool-card { height: 100%; }
     </style>
       <?php include 'darkHead.php'; ?>
@@ -144,8 +145,9 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
         <div style="display:flex; justify-content:space-between; align-items:baseline">
           <h3 class="w3-margin-top">Your files <?= count($mediaFiles) > 0 ? '(' . count($mediaFiles) . ')' : '' ?></h3>
           <?php if (!empty($mediaFiles) || !empty($otherFiles)): ?>
-          <form action="emptyFolder.php" method="post" style="margin:0" onsubmit="return confirm('Delete ALL files in uploads/? This cannot be undone.')">
-            <button class="w3-button w3-small w3-black w3-hover-red" type="submit">Empty folder</button>
+          <form id="empty-folder-form" action="emptyFolder.php" method="post" style="margin:0">
+            <button type="button" class="w3-button w3-small w3-black w3-hover-red"
+              onclick="showConfirm('Delete ALL files in uploads/? This cannot be undone.', document.getElementById('empty-folder-form'))">Empty folder</button>
           </form>
           <?php endif; ?>
         </div>
@@ -154,10 +156,22 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
           <p class="w3-text-grey">No files yet — import something above to get started.</p>
         <?php else: ?>
 
+        <!-- selection bar -->
+        <div id="selection-bar" style="display:none" class="w3-margin-bottom">
+          <span id="selection-count" class="w3-small w3-text-grey"></span>
+          <button class="w3-button w3-red w3-small w3-round w3-margin-left"
+            onclick="deleteSelected()">Delete selected</button>
+          <button class="w3-button w3-small w3-round w3-margin-left"
+            onclick="clearSelection()">Clear</button>
+        </div>
+        <!-- hidden form for bulk delete -->
+        <form id="bulk-delete-form" method="post" action="deleteFile.php" style="display:none"></form>
+
         <div class="w3-responsive">
           <table class="w3-table w3-striped w3-hoverable w3-bordered w3-small">
             <thead>
               <tr class="w3-dark-grey">
+                <th style="width:32px"><input type="checkbox" id="select-all" title="Select all"></th>
                 <th></th>
                 <th>Name</th>
                 <th>Duration</th>
@@ -174,6 +188,9 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
                 $enc = urlencode($f['name']);
               ?>
               <tr>
+                <td style="padding:4px;text-align:center">
+                  <input type="checkbox" class="file-check" value="<?= htmlspecialchars($f['name'], ENT_QUOTES) ?>">
+                </td>
                 <td style="padding:4px;width:88px">
                   <?php if ($f['thumb']): ?>
                     <img src="<?= htmlspecialchars($f['thumb']) ?>" alt=""
@@ -205,10 +222,10 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
                   <?php else: ?>
                     <a href="trimAudio.php?file=<?= $enc ?>"><button class="w3-button w3-purple w3-small">Trim</button></a>
                   <?php endif; ?>
-                  <form method="post" action="deleteFile.php" style="display:inline"
-                        onsubmit="return confirm('Delete <?= htmlspecialchars($f['name'], ENT_QUOTES) ?>?')">
+                  <form class="del-form" method="post" action="deleteFile.php" style="display:inline">
                     <input type="hidden" name="filename" value="<?= htmlspecialchars($f['name'], ENT_QUOTES) ?>">
-                    <button type="submit" class="w3-button w3-red w3-small">Delete</button>
+                    <button type="button" class="w3-button w3-red w3-small"
+                      onclick="showConfirm('Delete &quot;<?= htmlspecialchars($f['name'], ENT_QUOTES) ?>&quot;?', this.closest('form'))">Delete</button>
                   </form>
                 </td>
               </tr>
@@ -231,7 +248,7 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
         <h3 class="w3-margin-top">Tools</h3>
         <div class="w3-row-padding">
 
-          <div class="w3-quarter w3-margin-bottom">
+          <div class="w3-col s6 m3 w3-margin-bottom">
             <div class="w3-card w3-padding w3-purple tool-card">
               <h4>Trim video</h4>
               <p class="w3-small">Cut a clip between two timestamps.</p>
@@ -239,7 +256,7 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
             </div>
           </div>
 
-          <div class="w3-quarter w3-margin-bottom">
+          <div class="w3-col s6 m3 w3-margin-bottom">
             <div class="w3-card w3-padding w3-green tool-card">
               <h4>Trim audio</h4>
               <p class="w3-small">Cut an audio file between two timestamps.</p>
@@ -247,7 +264,7 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
             </div>
           </div>
 
-          <div class="w3-quarter w3-margin-bottom">
+          <div class="w3-col s6 m3 w3-margin-bottom">
             <div class="w3-card w3-padding w3-deep-orange tool-card">
               <h4>Extract audio</h4>
               <p class="w3-small">Pull the audio track out of a video file.</p>
@@ -255,7 +272,7 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
             </div>
           </div>
 
-          <div class="w3-quarter w3-margin-bottom">
+          <div class="w3-col s6 m3 w3-margin-bottom">
             <div class="w3-card w3-padding w3-orange tool-card">
               <h4>Combine clips</h4>
               <p class="w3-small">Concatenate multiple clips into one file.</p>
@@ -267,6 +284,17 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
       </div>
 
     </div>
+    <!-- ── CONFIRM MODAL ────────────────────────────────────── -->
+    <div id="confirm-modal" class="w3-modal" style="display:none" onclick="closeConfirm()">
+      <div class="w3-modal-content w3-card w3-padding w3-animate-zoom" onclick="event.stopPropagation()" style="max-width:340px;margin:120px auto">
+        <p id="confirm-msg" style="margin-top:0"></p>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="w3-button w3-round" onclick="closeConfirm()">Cancel</button>
+          <button id="confirm-ok" class="w3-button w3-red w3-round">Delete</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ── VIEW MODAL ─────────────────────────────────────── -->
     <div id="view-modal" class="w3-modal" onclick="closeModal()" style="display:none">
       <div class="w3-modal-content w3-animate-zoom" onclick="event.stopPropagation()" style="max-width:860px;margin:40px auto">
@@ -317,7 +345,58 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
         aud.pause(); aud.src = '';
       }
       document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeModal();
+        if (e.key === 'Escape') { closeModal(); closeConfirm(); }
+      });
+
+      // Multi-select
+      document.getElementById('select-all').addEventListener('change', function() {
+        document.querySelectorAll('.file-check').forEach(function(c) { c.checked = this.checked; }, this);
+        updateSelectionBar();
+      });
+      document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('file-check')) updateSelectionBar();
+      });
+      function updateSelectionBar() {
+        var checked = document.querySelectorAll('.file-check:checked');
+        var bar = document.getElementById('selection-bar');
+        var all = document.getElementById('select-all');
+        var total = document.querySelectorAll('.file-check').length;
+        bar.style.display = checked.length ? 'block' : 'none';
+        document.getElementById('selection-count').textContent = checked.length + ' of ' + total + ' selected';
+        all.indeterminate = checked.length > 0 && checked.length < total;
+        all.checked = checked.length === total;
+      }
+      function clearSelection() {
+        document.querySelectorAll('.file-check').forEach(function(c) { c.checked = false; });
+        document.getElementById('select-all').checked = false;
+        updateSelectionBar();
+      }
+      function deleteSelected() {
+        var checked = Array.from(document.querySelectorAll('.file-check:checked'));
+        if (!checked.length) return;
+        var form = document.getElementById('bulk-delete-form');
+        form.innerHTML = '';
+        checked.forEach(function(c) {
+          var inp = document.createElement('input');
+          inp.type = 'hidden'; inp.name = 'filenames[]'; inp.value = c.value;
+          form.appendChild(inp);
+        });
+        var n = checked.length;
+        showConfirm('Delete ' + n + ' file' + (n > 1 ? 's' : '') + '?', form);
+      }
+
+      var pendingForm = null;
+      function showConfirm(msg, form) {
+        pendingForm = form;
+        document.getElementById('confirm-msg').innerHTML = msg;
+        document.getElementById('confirm-modal').style.display = 'block';
+      }
+      function closeConfirm() {
+        pendingForm = null;
+        document.getElementById('confirm-modal').style.display = 'none';
+      }
+      document.getElementById('confirm-ok').addEventListener('click', function() {
+        if (pendingForm) pendingForm.submit();
       });
     </script>
   </body>

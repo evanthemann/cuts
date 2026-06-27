@@ -24,30 +24,48 @@ $outputWeb  = 'uploads/' . $outputName;
 $logFile    = $uploadsDir . $jobId . '.log';
 
 if ($mode === 'copy') {
+    // Probe all clips upfront to catch codec/format mismatches before running ffmpeg
+    $probeLines = '';
+    $codecs = [];
+    foreach ($clips as $c) {
+        $out = shell_exec($ffprobe . ' -v error -select_streams v:0'
+            . ' -show_entries stream=codec_name,width,height,r_frame_rate,pix_fmt,sample_aspect_ratio'
+            . ' -of default=noprint_wrappers=1 ' . escapeshellarg($c['path']) . ' 2>/dev/null');
+        $probeLines .= '--- ' . $c['name'] . " ---\n" . trim($out ?? '') . "\n";
+        if (preg_match('/codec_name=(\S+)/', $out ?? '', $m)) $codecs[] = $m[1];
+    }
+
+    $uniqueCodecs = array_unique($codecs);
+    if (count($uniqueCodecs) > 1) {
+        // Different codecs — fail immediately without running ffmpeg
+        file_put_contents($logFile,
+            'Clips use different codecs (' . implode(', ', $uniqueCodecs) . ') and cannot be joined without re-encoding.' . "\n"
+            . "CUTS_FAIL\nCUTS_PROBE_START\n" . $probeLines);
+        header('Location: progress.php?job=' . urlencode($jobId));
+        exit;
+    }
+
     $listPath  = $uploadsDir . $jobId . '_concat.txt';
     $listLines = array_map(fn($c) => "file '" . str_replace("'", "\\'", $c['name']) . "'", $clips);
     file_put_contents($listPath, implode("\n", $listLines));
 
+    // VP9 in MP4 requires the superframe BSF to strip superframe headers
+    $bsf = ($codecs && $codecs[0] === 'vp9') ? ' -bsf:v vp9_superframe' : '';
+
     $cmd = $ffmpeg . ' -loglevel error -f concat -safe 0'
          . ' -i ' . escapeshellarg($listPath)
+         . $bsf
          . ' -c copy -y '
          . escapeshellarg($outputPath);
 
-    // Build ffprobe section to run on failure
-    $probeCmd = '';
-    foreach ($clips as $c) {
-        $probeCmd .= '; echo ' . escapeshellarg('--- ' . $c['name'] . ' ---') . ' >> ' . escapeshellarg($logFile)
-                   . '; ' . $ffprobe . ' -v error -select_streams v:0'
-                   . ' -show_entries stream=codec_name,width,height,r_frame_rate,pix_fmt,sample_aspect_ratio'
-                   . ' -of default=noprint_wrappers=1 ' . escapeshellarg($c['path']) . ' >> ' . escapeshellarg($logFile) . ' 2>&1';
-    }
-
+    // Build ffprobe section to run on failure (other incompatibilities)
+    $escapedProbeLines = escapeshellarg($probeLines);
     $bgCmd = '(' . $cmd . ' >> ' . escapeshellarg($logFile) . ' 2>&1'
            . '; rm -f ' . escapeshellarg($listPath)
            . '; if [ -s ' . escapeshellarg($outputPath) . ' ]; then echo ' . escapeshellarg('CUTS_DONE:' . $outputWeb) . ' >> ' . escapeshellarg($logFile)
            . '; else echo CUTS_FAIL >> ' . escapeshellarg($logFile)
            . '; echo CUTS_PROBE_START >> ' . escapeshellarg($logFile)
-           . $probeCmd
+           . '; echo ' . $escapedProbeLines . ' >> ' . escapeshellarg($logFile)
            . '; fi) > /dev/null 2>&1 &';
 } else {
     // Probe first clip for resolution and frame rate so all clips are normalized to match

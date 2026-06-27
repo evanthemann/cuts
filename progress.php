@@ -51,7 +51,7 @@ $isAudio = in_array($ext, ['mp3', 'm4a', 'wav', 'aac', 'ogg', 'flac']);
   <body>
     <div class="w3-container w3-padding-24">
       <h1>Cuts</h1>
-      <div class="w3-card w3-padding" style="max-width:800px">
+      <div class="w3-card w3-padding">
 
         <?php if ($done && $resultFile): ?>
           <h2 class="w3-text-green">Done</h2>

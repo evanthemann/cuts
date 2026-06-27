@@ -94,7 +94,7 @@ function shortCodec($c) { return htmlspecialchars(explode('.', $c ?? '?')[0]); }
   <body>
     <div class="w3-container w3-padding-24">
       <h1>Cuts</h1>
-      <div style="max-width:820px">
+      <div class="w3-content">
 
         <?php if (!$ready && !$failed): ?>
         <!-- ── LOADING STATE ──────────────────────────────── -->
@@ -111,7 +111,7 @@ function shortCodec($c) { return htmlspecialchars(explode('.', $c ?? '?')[0]); }
         <?php else: ?>
         <!-- ── READY ──────────────────────────────────────── -->
 
-        <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:16px">
+        <div class="w3-margin-bottom" style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
           <?php if ($thumbnail): ?>
             <img src="<?= htmlspecialchars($thumbnail) ?>" alt="" style="width:160px;height:90px;object-fit:cover;border-radius:4px;flex-shrink:0">
           <?php endif; ?>
@@ -163,7 +163,7 @@ function shortCodec($c) { return htmlspecialchars(explode('.', $c ?? '?')[0]); }
 
             <?php else: ?>
               <div class="w3-row-padding w3-margin-bottom">
-                <div class="w3-half">
+                <div class="w3-col s12 m6">
                   <h5 style="margin-top:0">Video stream</h5>
                   <table class="w3-table w3-striped w3-bordered w3-small">
                     <thead><tr class="w3-teal"><th></th><th>Resolution</th><th>FPS</th><th>Codec</th><th>Size</th></tr></thead>
@@ -180,7 +180,7 @@ function shortCodec($c) { return htmlspecialchars(explode('.', $c ?? '?')[0]); }
                     </tbody>
                   </table>
                 </div>
-                <div class="w3-half">
+                <div class="w3-col s12 m6">
                   <h5 style="margin-top:0">Audio stream</h5>
                   <table class="w3-table w3-striped w3-bordered w3-small">
                     <thead><tr class="w3-teal"><th></th><th>Bitrate</th><th>Codec</th><th>Size</th></tr></thead>
@@ -211,7 +211,7 @@ function shortCodec($c) { return htmlspecialchars(explode('.', $c ?? '?')[0]); }
                   <label><input type="radio" name="subs_mode" value="hard"> <b>Hard</b> — burned in</label>
                   <div style="margin-top:8px">
                     <label>Track:
-                      <select name="subs_lang" class="w3-select w3-border" style="max-width:260px;display:inline-block;margin-left:8px">
+                      <select name="subs_lang" class="w3-select w3-border w3-margin-top">
                         <?php foreach ($subTracks as $code => $label): ?>
                           <option value="<?= htmlspecialchars($code) ?>" <?= $code === $subDefault ? 'selected' : '' ?>>
                             <?= htmlspecialchars($label) ?>
