@@ -55,11 +55,27 @@
 - [x] "Your files" table — View button per row opens file in a w3-modal (video/audio player inline)
 - [x] Dark mode
 
+### Upload progress / async upload
+
+**The short answer: the file transfer itself can't be detached** — PHP has to receive the full file before it can do anything with it. That part is inherently synchronous.
+
+**What can be improved:**
+
+1. **JS XHR/fetch upload with a progress bar** — instead of a plain form submit (which shows nothing until done), use `XMLHttpRequest` or `fetch` with an `upload.onprogress` handler. Show a live `X MB / Y MB` or percentage bar while the bytes are transferring. On completion, redirect to index.php. This is the main win — large uploads currently look frozen.
+
+2. **Post-upload processing detached** — if we ever add post-upload steps (ffprobe scan, thumbnail generation), those can be fired as background jobs using the existing async pattern once the file is on disk. Currently there's nothing to detach since upload.php just moves the file and redirects.
+
+3. **Investigate PHP upload timeout** — check whether `upload.php` has a timeout risk for large files. Relevant php.ini limits: `max_execution_time` (script timeout), `max_input_time` (time allowed to receive POST data — this is the one that kills uploads), `upload_max_filesize`, and `post_max_size`. A 1GB upload on a slow connection could easily hit `max_input_time` (default 60s). May need `@ini_set('max_input_time', -1)` at the top of `upload.php` similar to the `set_time_limit(0)` already used on download pages.
+
+**Verdict:** fully doable. The upload transfer is always synchronous by nature (PHP must receive the file), but a JS progress bar during the transfer is totally doable and would be the real UX win for large files.
+
 ### Branding — Cuts icon
 
 A custom favicon/app icon: scissors + film strip as the base shape, with a small download arrow at the top-right suggesting internet connectivity ("smart" / "connected"). Should read well at 32×32 (favicon) and 192×192 (PWA icon).
 
-Deliverables: `favicon.ico`, `icon-192.png`, `icon-512.png`. Add `<link rel="icon">` to `darkHead.php` so it applies everywhere. Optionally add a PWA manifest (`site.webmanifest`) so it installs nicely on mobile home screens.
+Deliverables: `favicon.ico`, `icon-192.png`, `icon-512.png`. Add `<link rel="icon" href="favicon.ico">` to `darkHead.php` so it applies everywhere. Optionally add a PWA manifest (`site.webmanifest`) so it installs nicely on mobile home screens.
+
+The favicon is the quick win here — even a simple 32×32 scissors icon stops the browser showing a blank/generic tab icon.
 
 ### Rename files
 
