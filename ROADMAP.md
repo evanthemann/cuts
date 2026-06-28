@@ -77,11 +77,11 @@ Deliverables: `favicon.ico`, `icon-192.png`, `icon-512.png`. Add `<link rel="ico
 
 The favicon is the quick win here — even a simple 32×32 scissors icon stops the browser showing a blank/generic tab icon.
 
-### Rename files
+### ~~Rename files~~ (done)
 
 Inline rename for files in the homepage table. Click a filename (or an edit icon), it becomes an editable text input, user types the new name and confirms. PHP backend renames the file plus any sidecar files (`.jpg`, `.vtt`, thumb) that share the same base name.
 
-### Job history
+### ~~Job history~~ (done)
 
 Show the last N completed jobs on `status.php` as a readable history log.
 
@@ -207,7 +207,7 @@ Each person gets their own login with isolated uploads and job history.
 - Logout button in the header
 - Consider: single shared ffmpeg/yt-dlp queue vs. per-user concurrent jobs
 
-### Visual trim scrubber
+### ~~Visual trim scrubber~~ (done)
 
 Add a timeline scrubber to the trim page to help users find exact timestamps without guessing.
 
@@ -226,7 +226,7 @@ Add a timeline scrubber to the trim page to help users find exact timestamps wit
 - No server-side changes needed — pure JS on the existing trim form
 - Works for both video trim and audio trim (audio scrubber shows waveform or just time; skip the frame preview for audio-only files)
 
-### Unified trim page
+### ~~Unified trim page~~ (done)
 
 Merge `trim.php` and `trimAudio.php` into a single page with two tabs — **Video** and **Audio** — using w3.css tab pattern. Same file selector, same start/end inputs; tab selection determines which ffmpeg command runs (`-c:v copy -c:a copy` vs `-c:a copy -vn`). Reduces clutter on the homepage and makes the tool feel like one coherent operation.
 
