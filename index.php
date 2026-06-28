@@ -83,7 +83,7 @@ foreach (glob('uploads/*') as $f) {
             if (file_exists($base . '_burned.' . $ve)) continue 2;
         }
     }
-    if ($ext === 'log' || $ext === 'json') continue; // skip job artifacts
+    if ($ext === 'log' || $ext === 'json' || $ext === 'ndjson') continue; // skip job artifacts
     if ($ext === 'vtt') {                            // skip subtitle sidecars
         $base = substr($f, 0, strrpos($f, '.'));
         foreach ($videoExts as $ve) {
@@ -161,13 +161,15 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
           <span id="selection-count" class="w3-small w3-text-grey"></span>
           <button class="w3-button w3-red w3-small w3-round w3-margin-left"
             onclick="deleteSelected()">Delete selected</button>
+          <button id="combine-selected-btn" class="w3-button w3-orange w3-small w3-round w3-margin-left"
+            style="display:none" onclick="combineSelected()">Combine clips</button>
           <button class="w3-button w3-small w3-round w3-margin-left"
             onclick="clearSelection()">Clear</button>
         </div>
         <!-- hidden form for bulk delete -->
         <form id="bulk-delete-form" method="post" action="deleteFile.php" style="display:none"></form>
 
-        <div class="w3-responsive">
+        <div style="overflow:visible">
           <table class="w3-table w3-striped w3-hoverable w3-bordered w3-small">
             <thead>
               <tr class="w3-dark-grey">
@@ -189,7 +191,7 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
               ?>
               <tr>
                 <td style="padding:4px;text-align:center">
-                  <input type="checkbox" class="file-check" value="<?= htmlspecialchars($f['name'], ENT_QUOTES) ?>">
+                  <input type="checkbox" class="file-check" value="<?= htmlspecialchars($f['name'], ENT_QUOTES) ?>" data-type="<?= $isVideo ? 'video' : 'audio' ?>">
                 </td>
                 <td style="padding:4px;width:88px">
                   <?php if ($f['thumb']): ?>
@@ -214,16 +216,23 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
                 </td>
                 <td><?= fmtSize($info['size'] ?? null) ?></td>
                 <td style="white-space:nowrap">
-                  <button class="w3-button w3-teal w3-small"
-                    onclick="viewFile('<?= htmlspecialchars($f['path'], ENT_QUOTES) ?>','<?= htmlspecialchars($f['name'], ENT_QUOTES) ?>',<?= $isVideo ? 'false' : 'true' ?>,'<?= htmlspecialchars($f['vtt'] ?? '', ENT_QUOTES) ?>')">View</button>
-                  <?php if ($isVideo): ?>
-                    <a href="trim.php?file=<?= $enc ?>"><button class="w3-button w3-purple w3-small">Trim</button></a>
-                    <a href="extractAudio.php?file=<?= $enc ?>"><button class="w3-button w3-green w3-small">Extract audio</button></a>
-                  <?php else: ?>
-                    <a href="trim.php?tab=audio&file=<?= $enc ?>"><button class="w3-button w3-purple w3-small">Trim</button></a>
-                  <?php endif; ?>
-                  <button type="button" class="w3-button w3-small w3-border"
-                    onclick="openRename('<?= htmlspecialchars($f['name'], ENT_QUOTES) ?>')">Rename</button>
+                  <div class="w3-dropdown-click" style="display:inline-block;position:relative">
+                    <button class="w3-button w3-small w3-border" type="button"
+                      onclick="toggleDropdown(this)">Actions ▾</button>
+                    <div class="w3-dropdown-content w3-bar-block w3-card w3-border"
+                      style="min-width:150px;right:0;left:auto;z-index:200;position:absolute">
+                      <a class="w3-bar-item w3-button w3-small" href="#"
+                        onclick="event.preventDefault();closeDropdowns();viewFile('<?= htmlspecialchars($f['path'], ENT_QUOTES) ?>','<?= htmlspecialchars($f['name'], ENT_QUOTES) ?>',<?= $isVideo ? 'false' : 'true' ?>,'<?= htmlspecialchars($f['vtt'] ?? '', ENT_QUOTES) ?>')">View</a>
+                      <?php if ($isVideo): ?>
+                        <a class="w3-bar-item w3-button w3-small" href="trim.php?file=<?= $enc ?>">Trim</a>
+                        <a class="w3-bar-item w3-button w3-small" href="extractAudio.php?file=<?= $enc ?>">Extract audio</a>
+                      <?php else: ?>
+                        <a class="w3-bar-item w3-button w3-small" href="trim.php?tab=audio&file=<?= $enc ?>">Trim audio</a>
+                      <?php endif; ?>
+                      <a class="w3-bar-item w3-button w3-small" href="#"
+                        onclick="event.preventDefault();closeDropdowns();openRename('<?= htmlspecialchars($f['name'], ENT_QUOTES) ?>')">Rename</a>
+                    </div>
+                  </div>
                   <form class="del-form" method="post" action="deleteFile.php" style="display:inline">
                     <input type="hidden" name="filename" value="<?= htmlspecialchars($f['name'], ENT_QUOTES) ?>">
                     <button type="button" class="w3-button w3-red w3-small"
@@ -389,6 +398,31 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
         document.getElementById('selection-count').textContent = checked.length + ' of ' + total + ' selected';
         all.indeterminate = checked.length > 0 && checked.length < total;
         all.checked = checked.length === total;
+        var videoChecked = Array.from(checked).filter(function(c) { return c.dataset.type === 'video'; });
+        document.getElementById('combine-selected-btn').style.display = videoChecked.length >= 2 ? 'inline-block' : 'none';
+      }
+
+      function toggleDropdown(btn) {
+        var content = btn.nextElementSibling;
+        document.querySelectorAll('.w3-dropdown-content.w3-show').forEach(function(d) {
+          if (d !== content) d.classList.remove('w3-show');
+        });
+        content.classList.toggle('w3-show');
+        event.stopPropagation();
+      }
+      function closeDropdowns() {
+        document.querySelectorAll('.w3-dropdown-content.w3-show').forEach(function(d) {
+          d.classList.remove('w3-show');
+        });
+      }
+      document.addEventListener('click', function() { closeDropdowns(); });
+
+      function combineSelected() {
+        var videos = Array.from(document.querySelectorAll('.file-check:checked'))
+          .filter(function(c) { return c.dataset.type === 'video'; });
+        if (videos.length < 2) return;
+        var params = videos.map(function(c) { return 'clips[]=' + encodeURIComponent(c.value); }).join('&');
+        window.location.href = 'combineClips.php?' + params;
       }
       function clearSelection() {
         document.querySelectorAll('.file-check').forEach(function(c) { c.checked = false; });

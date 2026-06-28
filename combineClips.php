@@ -1,3 +1,9 @@
+<?php
+$preselect = (isset($_GET['clips']) && is_array($_GET['clips']))
+    ? array_values(array_map('basename', $_GET['clips']))
+    : [];
+$slotCount = max(2, count($preselect));
+?>
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
   <head>
@@ -16,21 +22,24 @@
           <?php
             $files = glob('uploads/*.{mp4,mkv,mov,avi,webm,mp3,m4a,wav,aac,ogg,flac}', GLOB_BRACE);
             sort($files);
-            $opts = '<option value="">— none —</option>';
-            foreach ($files as $f) {
-                $name = htmlspecialchars(basename($f));
-                $opts .= "<option value=\"$name\">$name</option>";
+            function buildOpts($files, $selected = '') {
+                $out = '<option value="">— none —</option>';
+                foreach ($files as $f) {
+                    $name = basename($f);
+                    $sel  = ($name === $selected) ? ' selected' : '';
+                    $out .= '<option value="' . htmlspecialchars($name) . '"' . $sel . '>'
+                          . htmlspecialchars($name) . '</option>';
+                }
+                return $out;
             }
           ?>
           <div id="clipSlots">
-            <label class="w3-text-white"><b>Clip 1</b></label>
-            <select class="w3-select w3-border w3-margin-bottom" name="clips[]">
-              <?= $opts ?>
-            </select>
-            <label class="w3-text-white"><b>Clip 2</b></label>
-            <select class="w3-select w3-border w3-margin-bottom" name="clips[]">
-              <?= $opts ?>
-            </select>
+            <?php for ($i = 0; $i < $slotCount; $i++): ?>
+              <label class="w3-text-white"><b>Clip <?= $i + 1 ?></b></label>
+              <select class="w3-select w3-border w3-margin-bottom" name="clips[]">
+                <?= buildOpts($files, $preselect[$i] ?? '') ?>
+              </select>
+            <?php endfor; ?>
           </div>
           <button type="button" class="w3-button w3-white w3-text-orange w3-round w3-margin-bottom" onclick="addClip()">+ Add clip</button>
 
@@ -65,13 +74,13 @@
       <div style="margin-top:16px"><?php include 'backToHomeButton.php'; ?></div>
     </div>
     <script>
-    var clipCount = 2;
+    var clipCount = <?= $slotCount ?>;
     function addClip() {
       clipCount++;
       var slots = document.getElementById('clipSlots');
       var lastSelect = slots.querySelector('select:last-of-type');
       var newSelect = lastSelect.cloneNode(true);
-      newSelect.value = '';
+      newSelect.selectedIndex = 0;
       var label = document.createElement('label');
       label.className = 'w3-text-white';
       label.innerHTML = '<b>Clip ' + clipCount + '</b>';
