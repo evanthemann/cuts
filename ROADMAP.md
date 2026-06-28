@@ -69,7 +69,7 @@
 
 **Verdict:** fully doable. The upload transfer is always synchronous by nature (PHP must receive the file), but a JS progress bar during the transfer is totally doable and would be the real UX win for large files.
 
-### Branding — Cuts icon
+### ~~Branding — Cuts icon~~ (done)
 
 A custom favicon/app icon: scissors + film strip as the base shape, with a small download arrow at the top-right suggesting internet connectivity ("smart" / "connected"). Should read well at 32×32 (favicon) and 192×192 (PWA icon).
 
