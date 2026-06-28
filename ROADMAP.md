@@ -230,18 +230,71 @@ Add a timeline scrubber to the trim page to help users find exact timestamps wit
 
 Merge `trim.php` and `trimAudio.php` into a single page with two tabs — **Video** and **Audio** — using w3.css tab pattern. Same file selector, same start/end inputs; tab selection determines which ffmpeg command runs (`-c:v copy -c:a copy` vs `-c:a copy -vn`). Reduces clutter on the homepage and makes the tool feel like one coherent operation.
 
-### Make GIF
+### Fix trim — frozen frame at start of output (keyframe alignment bug)
 
-Export a clip as an animated GIF. Only available for video files 5 seconds or shorter (enforced both in the UI — only shown in the actions dropdown for short clips — and server-side as a hard reject).
+**Symptom:** Trimmed clips start with a frozen or garbled frame for a moment before playback catches up.
 
-Inputs: file, optional scale (default 480px wide), optional fps reduction (default 15fps). ffmpeg two-pass approach for decent quality at small file size:
+**Why it happens:** The current trim uses `-c:v copy` (stream copy — no re-encode). Video is stored as **Groups of Pictures (GOPs)**: I-frames (full keyframes) followed by P-frames and B-frames that only store differences from nearby frames. If the trim start point falls between keyframes, the output stream starts with a P or B frame that references a missing I-frame. Most players show a frozen or corrupt frame until the next I-frame appears.
+
+**Fix options:**
+
+1. **Re-encode mode (recommended):** Drop `-c:v copy`, use `-c:v libx264 -c:a aac` (or `-c:v libx264 -c:a copy`). ffmpeg re-encodes from the exact start point, guaranteeing the output opens on an I-frame. Slower but clean output. For short clips this is imperceptible; for long clips it's noticeable but still acceptable.
+
+2. **Smart copy (complex, not worth it here):** Two-pass trim — seek to the keyframe before the start, re-encode only the first GOP, stream-copy the rest. Minimizes encode time but adds significant complexity.
+
+3. **MoviePy:** Uses ffmpeg under the hood but re-encodes by default — eliminates the keyframe problem. Adds a Python worker dependency for no net gain over option 1 (it's still just libx264 doing the work). **Not worth the added complexity for this bug alone.**
+
+**Verdict:** Change the default to re-encode (`libx264`). Keep stream copy available as a power-user toggle with an explicit warning that the start frame may freeze. Most users should never need stream copy.
+
+**Implementation:**
+- `trimresult.php`: default to `-c:v libx264 -c:a aac`; read a `fast` POST checkbox — if checked, fall back to `-c:v copy -c:a copy`
+- Add to trim form: `<label><input type="checkbox" name="fast"> Fast mode (stream copy) — may freeze on first frame</label>`
+- Add `CUTS_TOTAL_DURATION` to the re-encode path so the progress bar works; stream-copy path can skip it (finishes too fast to matter)
+- `trimAudioResult.php` (if separate): `-c:a copy -vn` is already fine — audio-only trim has no keyframe issue
+
+### ~~Make GIF~~ (done, two known bugs below)
+
+Export a clip as an animated GIF. Only available for video files 10 seconds or shorter (enforced both in the UI — only shown in the actions dropdown for short clips — and server-side as a hard reject).
+
+Inputs: file, optional start/end time (scrubber UI). Fixed output: 480px wide, 15 fps. ffmpeg two-pass approach for decent quality at small file size:
 
 ```bash
 ffmpeg -i input.mp4 -vf "fps=15,scale=480:-1:flags=lanczos,palettegen" palette.png
-ffmpeg -i input.mp4 -i palette.png -vf "fps=15,scale=480:-1:flags=lanczos,paletteuse" output.gif
+ffmpeg -i input.mp4 -i palette.png -filter_complex "[0:v]fps=15,scale=480:-1:flags=lanczos[x];[x][1:v]paletteuse" output.gif
 ```
 
 Output goes through the existing progress.php job system. The two-pass nature means the result PHP file runs pass 1 synchronously (palettegen is fast), then launches pass 2 as the background job.
+
+**Known bugs:**
+
+- **Results page shows `<video>` for GIF output** — `progress.php` detects the output file and renders it in a `<video>` element, but GIFs don't work in `<video>`. Fix: detect `.gif` extension in `progress.php` and render an `<img>` tag instead. Simple extension check before the player block.
+
+- **Output starts at nearest I-frame instead of exact start time** — same root cause as the trim keyframe bug above. The `-ss` seek snaps to the nearest keyframe before the requested time, so the GIF may include a few frames before the intended start. This will be fixed automatically when the keyframe fix lands: switch pass 1 and pass 2 to use slow-seek (`-ss` after `-i`) or force a re-decode from the exact timestamp. Low priority since GIFs are short and the drift is usually < 0.5s.
+
+### Fix subtitle display — rolling/append format from YouTube
+
+**Symptom:** Burned-in or embedded subtitles cycle awkwardly: a top line appears, then a bottom line, then the top line is replaced, then the bottom line is replaced — rather than showing clean subtitle blocks.
+
+**Why it happens:** YouTube auto-generated captions (downloaded via yt-dlp as `.vtt` or `.srt`) use a **rolling/append format** — each cue shows the full visible caption window at that moment, building up line by line:
+
+```
+1: "First phrase"
+2: "First phrase\nSecond phrase"   ← first appears at top, second at bottom
+3: "Second phrase\nThird phrase"   ← top line swapped out
+4: "Third phrase\nFourth phrase"   ← etc.
+```
+
+When burned in, viewers see lines flickering in and out rather than clean sentence-level subtitles.
+
+**Fix:** Post-process the downloaded `.srt`/`.vtt` before passing it to ffmpeg. Strip duplicate/overlapping lines and merge overlapping cues into clean non-overlapping blocks. A small PHP or Python script can do this:
+
+1. Parse all SRT cues
+2. For each cue, keep only the *new* bottom line (the one not present in the previous cue) — or deduplicate by tracking which lines have already been shown
+3. Re-number and write clean SRT
+
+**Where to hook it in:** `downloadResult.php` (or whichever file handles the yt-dlp subtitle workflow) — run the cleanup immediately after yt-dlp writes the `.srt`, before the ffmpeg burn step. Clean SRT replaces the original in place.
+
+**Note:** Manual/human-written subtitles downloaded from YouTube typically don't have this problem — they're already in block format. The rolling format is specific to auto-generated captions.
 
 ### Investigate frei0r filters
 
@@ -264,3 +317,83 @@ Survey what MoviePy can do that ffmpeg alone can't easily expose through a simpl
 - 480p is the sweet spot: readable subs, short encode, moderate file size (upscaling a 144p source to 1080p is wasteful — looks identical, just more pixels)
 - Optionally expose a "target resolution" dropdown (360p / 480p / 720p) when hard-burn + low-res source are both selected
 - Detect source height via ffprobe before building the ffmpeg command; skip upscale if source is already ≥ 480p
+
+### Docker — containerized deployment
+
+Package the app as a Docker image so it can be spun up anywhere with a single command — no PHP/ffmpeg/yt-dlp setup on the host.
+
+**What goes in the image:**
+- Base: `php:8.x-apache` (official image, includes Apache + PHP)
+- System packages: `ffmpeg`, `python3-pip` → `yt-dlp`, `ffprobe` (bundled with ffmpeg)
+- Optional: `openai-whisper` if generate-subtitles lands first
+- App files copied to `/var/www/html/`
+- `uploads/` mounted as a named volume so files persist across container restarts
+
+**Dockerfile sketch:**
+```dockerfile
+FROM php:8.2-apache
+RUN apt-get update && apt-get install -y ffmpeg python3 python3-pip \
+    && pip3 install yt-dlp
+COPY . /var/www/html/
+RUN mkdir -p /var/www/html/uploads && chmod 777 /var/www/html/uploads
+VOLUME ["/var/www/html/uploads"]
+EXPOSE 80
+```
+
+**docker-compose.yml** for local use:
+```yaml
+services:
+  cuts:
+    build: .
+    ports:
+      - "8080:80"
+    volumes:
+      - cuts_uploads:/var/www/html/uploads
+volumes:
+  cuts_uploads:
+```
+
+**Open questions before building:**
+- PHP config overrides (`upload_max_filesize`, `post_max_size`, `max_input_time`) — bake into a custom `php.ini` or use `ini_set()` at runtime?
+- Does the `posix` PHP extension need to be explicitly enabled in the official image? (Required for cancel-job feature.)
+- `.htaccess` / `mod_rewrite` — ensure `AllowOverride All` is set in the Apache config.
+- Whisper install makes the image ~5GB; make it optional (separate `Dockerfile.full`).
+
+**Stretch:** push the image to Docker Hub so anyone can `docker pull evanmann/cuts` and run it immediately.
+
+### Public hosting — launch Cuts for others to use
+
+Deploy Cuts to a public URL so anyone can try it without self-hosting, and optionally monetize or accept support.
+
+**Hosting options (ranked by fit):**
+
+| Option | Fit | Notes |
+|---|---|---|
+| **DigitalOcean Droplet** | Best | $6/mo, full control, easy Docker deploy, no vendor lock-in |
+| **Fly.io** | Great | Free tier generous, Docker-native, auto-scales to zero |
+| **AWS Lightsail** | Good | Fixed-price VPS like DO, familiar if you know AWS |
+| **Render** | OK | Docker support, but persistent disks cost extra |
+| **Bluehost shared** | Poor | PHP-only, no ffmpeg, no Docker — doesn't work for this app |
+
+**Recommended path:** DigitalOcean Droplet ($6/mo, 1 vCPU / 1GB RAM) + the Docker container above. Attach a $1/mo block storage volume for uploads. Point a domain at it. Done.
+
+**Concerns to solve before going public:**
+
+- **Abuse / storage**: anonymous users will upload and never clean up. Need either: (a) user accounts with quotas, or (b) a TTL cron job that deletes files older than 24–48 hours from `uploads/`. The cron approach is simpler and probably right for a public free tool.
+- **Concurrent ffmpeg jobs**: a single $6 droplet will fall over with 3+ simultaneous encodes. Options: queue jobs (one at a time), or upgrade the droplet. A job queue (flat file or Redis) is the clean fix but adds complexity.
+- **yt-dlp ToS exposure**: downloading YouTube videos is a legal grey area. A public instance might attract DMCA attention. Either add a disclaimer, restrict to non-YouTube URLs, or keep it invite-only initially.
+- **HTTPS**: Caddy or Certbot + Let's Encrypt. Caddy is easiest — single binary, auto-renews, works as a reverse proxy in front of the PHP/Apache container.
+
+**Monetization / support options:**
+
+- **Buy Me a Coffee** — drop a BMC button in the footer (`buymeacoffee.com`). Zero friction, no payment processing to manage. Good for a free tool.
+- **Ko-fi** — same idea, slightly more customizable.
+- **Patreon** — overkill unless there's a content angle.
+- **Self-hosted / bring-your-own-server** framing — market it as a tool devs deploy themselves; Docker image is the product, no hosting costs for you.
+
+**Minimum to launch publicly:**
+1. Docker image builds and runs cleanly (see above)
+2. TTL cleanup cron (delete uploads > 48h)
+3. HTTPS via Caddy
+4. Buy Me a Coffee button in footer
+5. A landing page or README explaining what it is

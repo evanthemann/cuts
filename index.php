@@ -226,6 +226,9 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
                       <?php if ($isVideo): ?>
                         <a class="w3-bar-item w3-button w3-small" href="trim.php?file=<?= $enc ?>">Trim</a>
                         <a class="w3-bar-item w3-button w3-small" href="extractAudio.php?file=<?= $enc ?>">Extract audio</a>
+                        <?php if (($info['duration'] ?? PHP_INT_MAX) <= 10): ?>
+                          <a class="w3-bar-item w3-button w3-small" href="makeGif.php?file=<?= $enc ?>">Make GIF</a>
+                        <?php endif; ?>
                       <?php else: ?>
                         <a class="w3-bar-item w3-button w3-small" href="trim.php?tab=audio&file=<?= $enc ?>">Trim audio</a>
                       <?php endif; ?>
@@ -280,6 +283,14 @@ usort($mediaFiles, fn($a, $b) => strcmp($a['name'], $b['name']));
               <h4>Combine clips</h4>
               <p class="w3-small">Concatenate multiple clips into one file.</p>
               <a href="combineClips.php"><button class="w3-button w3-white w3-small">Open</button></a>
+            </div>
+          </div>
+
+          <div class="w3-col s6 m3 w3-margin-bottom">
+            <div class="w3-card w3-padding w3-teal tool-card">
+              <h4>Make GIF</h4>
+              <p class="w3-small">Export a short clip (≤ 7 s) as an animated GIF.</p>
+              <a href="makeGif.php"><button class="w3-button w3-white w3-small">Open</button></a>
             </div>
           </div>
 

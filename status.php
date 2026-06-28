@@ -145,7 +145,7 @@ $jobFiles = array_merge(
       <?php
         require_once __DIR__ . '/jobHistory.php';
         $history = readJobHistory(20);
-        $opLabels = ['trim'=>'Trim','trim_audio'=>'Trim audio','extract_audio'=>'Extract audio','combine'=>'Combine','download'=>'Download'];
+        $opLabels = ['trim'=>'Trim','trim_audio'=>'Trim audio','extract_audio'=>'Extract audio','combine'=>'Combine','download'=>'Download','make_gif'=>'Make GIF'];
       ?>
       <div class="w3-card w3-padding w3-margin-bottom">
         <h3>Recent jobs</h3>
