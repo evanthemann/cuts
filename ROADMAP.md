@@ -55,7 +55,7 @@
 - [x] "Your files" table — View button per row opens file in a w3-modal (video/audio player inline)
 - [x] Dark mode
 
-### Upload progress / async upload
+### ~~Upload progress / async upload~~ (done)
 
 **The short answer: the file transfer itself can't be detached** — PHP has to receive the full file before it can do anything with it. That part is inherently synchronous.
 
@@ -129,7 +129,7 @@ When 2+ files are checked in the homepage table, the selection bar (already exis
 - Pre-selecting dropdowns in `combineClips.php`: read `$_GET['clips']` and emit `selected` on the matching `<option>` for the first N slots; add extra slots if more clips are passed than the default 2.
 - Only video files should appear as combine candidates (filter out audio in the selection bar check).
 
-### Cancel running job
+### ~~Cancel running job~~ (done)
 
 Add a **Cancel** button to `progress.php` that kills the background ffmpeg process mid-run.
 
@@ -148,7 +148,7 @@ A `cancelJob.php` endpoint reads the `.pid` file and sends SIGTERM via `posix_ki
 - Process already gone (PID reused by OS) — `posix_kill` returns false gracefully
 - Partial output file left behind — delete it in `cancelJob.php`
 
-### Progress bar on processing page
+### ~~Progress bar on processing page~~ (done)
 
 Show a real-time percent-complete bar while ffmpeg is running.
 
